@@ -13,6 +13,7 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.os.Handler
+import android.os.Looper
 import java.util.UUID
 
 public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
@@ -20,7 +21,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     private var gatt: BluetoothGatt? = null
     private val context = context
     // At least some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
-    private val mainHandler = Handler(context.mainLooper)
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     override fun connect() {
         mainHandler.post {
