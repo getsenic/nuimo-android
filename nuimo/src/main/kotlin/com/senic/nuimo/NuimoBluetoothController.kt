@@ -13,9 +13,7 @@ import android.bluetooth.BluetoothGattCallback
 import android.content.Context
 import java.util.UUID
 
-public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController {
-    public override val address = bluetoothDevice.address
-
+public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
     private val bluetoothDevice = bluetoothDevice
     private val context = context
 

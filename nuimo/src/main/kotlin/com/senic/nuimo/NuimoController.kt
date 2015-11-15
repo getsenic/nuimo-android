@@ -7,8 +7,24 @@
 
 package com.senic.nuimo
 
-interface NuimoController {
-    val address: String
+import java.util.*
 
-    fun connect()
+abstract class NuimoController(address: String) {
+    val address: String = address
+
+    private val listeners = ArrayList<NuimoControllerListener>()
+
+    abstract fun connect()
+
+    public fun addControllerListener(controllerListener: NuimoControllerListener) {
+        listeners.add(controllerListener)
+    }
+
+    public fun removeControllerListener(controllerListener: NuimoControllerListener) {
+        listeners.remove(controllerListener)
+    }
+}
+
+public interface NuimoControllerListener {
+    fun onConnect();
 }
