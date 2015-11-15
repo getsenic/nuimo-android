@@ -10,21 +10,43 @@ package com.senic.nuimo
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothProfile
 import android.content.Context
+import android.os.Handler
 import java.util.UUID
 
 public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
-    private val bluetoothDevice = bluetoothDevice
+    private val device = bluetoothDevice
+    private var gatt: BluetoothGatt? = null
     private val context = context
+    // At least some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
+    private val mainHandler = Handler(context.mainLooper)
 
     override fun connect() {
-        bluetoothDevice.connectGatt(context, true, GattCallback())
+        mainHandler.post {
+            device.connectGatt(context, true, GattCallback())
+        }
     }
 
     private inner class GattCallback: BluetoothGattCallback() {
-        override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+        override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            if (status != BluetoothGatt.GATT_SUCCESS) return
+
+            println("Connection state changed " + newState)
+            when (newState) {
+                BluetoothProfile.STATE_CONNECTED -> {
+                    this@NuimoBluetoothController.gatt = gatt
+                    mainHandler.post {
+                        gatt.discoverServices()
+                    }
+                    listeners.forEach { it.onConnect() }
+                }
+            }
+        }
+
+        override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             println("On services discovered: " + status + (if (status == BluetoothGatt.GATT_SUCCESS) " success" else " failed"))
-            gatt?.services?.forEach { println(it.uuid.toString()) }
+            gatt.services?.forEach { println(it.uuid.toString()) }
         }
     }
 }

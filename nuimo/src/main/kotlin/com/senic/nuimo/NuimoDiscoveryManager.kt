@@ -13,6 +13,7 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import java.util.ArrayList
 
+//TODO: Android requires the search to be stopped before connecting to any device. That requirement should be handled transparently by this library!
 public class NuimoDiscoveryManager(context: Context){
     private val context = context
     private val bluetoothManager: BluetoothManager
@@ -39,15 +40,15 @@ public class NuimoDiscoveryManager(context: Context){
     }
 
     public fun stopDiscovery() {
-
+        bluetoothAdapter.stopLeScan(scanCallback)
+        println("Nuimo discovery stopped")
     }
 
     private inner class ScanCallback: BluetoothAdapter.LeScanCallback {
         //TODO: This might help: https://github.com/movisens/SmartGattLib/tree/master/src/main/java/com/movisens/smartgattlib
 
-        override fun onLeScan(device: BluetoothDevice?, rssi: Int, scanRecord: ByteArray?) {
-            println("Device found " + device?.address)
-            if (device == null) { return }
+        override fun onLeScan(device: BluetoothDevice, rssi: Int, scanRecord: ByteArray?) {
+            println("Device found " + device.address)
             discoveryListeners.forEach { it.onDiscoverNuimoController(NuimoBluetoothController(device, context)) }
         }
     }

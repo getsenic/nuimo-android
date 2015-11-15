@@ -12,7 +12,7 @@ import java.util.*
 abstract class NuimoController(address: String) {
     val address: String = address
 
-    private val listeners = ArrayList<NuimoControllerListener>()
+    protected val listeners = ArrayList<NuimoControllerListener>()
 
     abstract fun connect()
 
