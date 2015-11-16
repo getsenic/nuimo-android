@@ -20,14 +20,10 @@ class NuimoTest: AndroidTestCase() {
     fun testDiscoveryManagerShouldDiscoverOneBluetoothController() {
         val waitLock = Semaphore(0)
         val discovery = NuimoDiscoveryManager(context)
-        discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
-            override fun onDiscoverNuimoController(nuimoController: NuimoController) {
-                println("Bluetooth device found " + nuimoController.address)
-                assertEquals(NuimoBluetoothController::class.java, nuimoController.javaClass)
-                waitLock.release()
-            }
-        })
-        discovery.startDiscovery()
+        discover(discovery) { nuimoController ->
+            assertEquals(NuimoBluetoothController::class.java, nuimoController.javaClass)
+            waitLock.release()
+        }
         waitLock.acquire()
         discovery.stopDiscovery()
     }
@@ -35,20 +31,16 @@ class NuimoTest: AndroidTestCase() {
     fun testNuimoControllerShouldConnect() {
         val waitLock = Semaphore(0)
         val discovery = NuimoDiscoveryManager(context)
-        discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
-            override fun onDiscoverNuimoController(nuimoController: NuimoController) {
-                println("Bluetooth device found " + nuimoController.address)
-                nuimoController.addControllerListener(object: NuimoControllerListener() {
-                    override fun onConnect() {
-                        nuimoController.disconnect()
-                        waitLock.release()
-                    }
-                })
-                discovery.stopDiscovery()
-                nuimoController.connect()
-            }
-        })
-        discovery.startDiscovery()
+        discover(discovery) { nuimoController ->
+            nuimoController.addControllerListener(object: NuimoControllerListener() {
+                override fun onConnect() {
+                    nuimoController.disconnect()
+                    waitLock.release()
+                }
+            })
+            discovery.stopDiscovery()
+            nuimoController.connect()
+        }
         waitLock.acquire()
         discovery.stopDiscovery()
     }
@@ -56,22 +48,18 @@ class NuimoTest: AndroidTestCase() {
     fun testNuimoControllerShouldDisconnect() {
         val waitLock = Semaphore(0)
         val discovery = NuimoDiscoveryManager(context)
-        discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
-            override fun onDiscoverNuimoController(nuimoController: NuimoController) {
-                println("Bluetooth device found " + nuimoController.address)
-                nuimoController.addControllerListener(object: NuimoControllerListener() {
-                    override fun onConnect() {
-                        nuimoController.disconnect()
-                    }
-                    override fun onDisconnect() {
-                        waitLock.release()
-                    }
-                })
-                discovery.stopDiscovery()
-                nuimoController.connect()
-            }
-        })
-        discovery.startDiscovery()
+        discover(discovery) { nuimoController ->
+            nuimoController.addControllerListener(object: NuimoControllerListener() {
+                override fun onConnect() {
+                    nuimoController.disconnect()
+                }
+                override fun onDisconnect() {
+                    waitLock.release()
+                }
+            })
+            discovery.stopDiscovery()
+            nuimoController.connect()
+        }
         waitLock.acquire()
         discovery.stopDiscovery()
     }
@@ -79,20 +67,26 @@ class NuimoTest: AndroidTestCase() {
     fun testNuimoControllerShouldDiscoverLedMatrixService() {
         val waitLock = Semaphore(0)
         val discovery = NuimoDiscoveryManager(context)
+        discover(discovery) { nuimoController ->
+            nuimoController.addControllerListener(object: NuimoControllerListener() {
+                override fun onLedMatrixFound() {
+                    waitLock.release()
+                }
+            })
+            discovery.stopDiscovery()
+            nuimoController.connect()
+        }
+        waitLock.acquire()
+        discovery.stopDiscovery()
+    }
+
+    fun discover(discovery: NuimoDiscoveryManager, discovered: (nuimoController: NuimoController) -> Unit) {
         discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
             override fun onDiscoverNuimoController(nuimoController: NuimoController) {
                 println("Bluetooth device found " + nuimoController.address)
-                nuimoController.addControllerListener(object: NuimoControllerListener() {
-                    override fun onLedMatrixFound() {
-                        waitLock.release()
-                    }
-                })
-                discovery.stopDiscovery()
-                nuimoController.connect()
+                discovered(nuimoController)
             }
         })
         discovery.startDiscovery()
-        waitLock.acquire()
-        discovery.stopDiscovery()
     }
 }
