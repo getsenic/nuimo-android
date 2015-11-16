@@ -31,15 +31,9 @@ class NuimoTest: AndroidTestCase() {
     fun testNuimoControllerShouldConnect() {
         val waitLock = Semaphore(0)
         val discovery = NuimoDiscoveryManager(context)
-        discover(discovery) { nuimoController ->
-            nuimoController.addControllerListener(object: NuimoControllerListener() {
-                override fun onConnect() {
-                    nuimoController.disconnect()
-                    waitLock.release()
-                }
-            })
-            discovery.stopDiscovery()
-            nuimoController.connect()
+        discoverAndConnect(discovery) { nuimoController ->
+            nuimoController.disconnect()
+            waitLock.release()
         }
         waitLock.acquire()
         discovery.stopDiscovery()
@@ -48,17 +42,13 @@ class NuimoTest: AndroidTestCase() {
     fun testNuimoControllerShouldDisconnect() {
         val waitLock = Semaphore(0)
         val discovery = NuimoDiscoveryManager(context)
-        discover(discovery) { nuimoController ->
+        discoverAndConnect(discovery) { nuimoController ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
-                override fun onConnect() {
-                    nuimoController.disconnect()
-                }
                 override fun onDisconnect() {
                     waitLock.release()
                 }
             })
-            discovery.stopDiscovery()
-            nuimoController.connect()
+            nuimoController.disconnect()
         }
         waitLock.acquire()
         discovery.stopDiscovery()
@@ -67,14 +57,12 @@ class NuimoTest: AndroidTestCase() {
     fun testNuimoControllerShouldDiscoverLedMatrixService() {
         val waitLock = Semaphore(0)
         val discovery = NuimoDiscoveryManager(context)
-        discover(discovery) { nuimoController ->
+        discoverAndConnect(discovery) { nuimoController ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onLedMatrixFound() {
                     waitLock.release()
                 }
             })
-            discovery.stopDiscovery()
-            nuimoController.connect()
         }
         waitLock.acquire()
         discovery.stopDiscovery()
@@ -88,5 +76,17 @@ class NuimoTest: AndroidTestCase() {
             }
         })
         discovery.startDiscovery()
+    }
+
+    fun discoverAndConnect(discovery: NuimoDiscoveryManager, connected: (nuimoController: NuimoController) -> Unit) {
+        discover(discovery) { nuimoController ->
+            nuimoController.addControllerListener(object: NuimoControllerListener() {
+                override fun onConnect() {
+                    connected(nuimoController)
+                }
+            })
+            discovery.stopDiscovery()
+            nuimoController.connect()
+        }
     }
 }
