@@ -35,7 +35,8 @@ public class NuimoDiscoveryManager(context: Context){
     }
 
     public fun startDiscovery() {
-        bluetoothAdapter.startLeScan(/*NUIMO_SERVICE_UUIDS, */scanCallback)
+        //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
+        bluetoothAdapter.startLeScan(/*NUIMO_SERVICE_UUIDS,*/ scanCallback)
         println("Nuimo discovery started")
     }
 
@@ -48,7 +49,8 @@ public class NuimoDiscoveryManager(context: Context){
         //TODO: This might help: https://github.com/movisens/SmartGattLib/tree/master/src/main/java/com/movisens/smartgattlib
 
         override fun onLeScan(device: BluetoothDevice, rssi: Int, scanRecord: ByteArray?) {
-            println("Device found " + device.address)
+            println("Device found " + device.address + ", " + device.name)
+            if (device.name != "Nuimo") { return }
             discoveryListeners.forEach { it.onDiscoverNuimoController(NuimoBluetoothController(device, context)) }
         }
     }

@@ -25,6 +25,7 @@ abstract class NuimoController(address: String) {
     }
 }
 
-public interface NuimoControllerListener {
-    fun onConnect();
+public abstract class NuimoControllerListener {
+    open fun onConnect() {}
+    open fun onLedMatrixFound() {}
 }
