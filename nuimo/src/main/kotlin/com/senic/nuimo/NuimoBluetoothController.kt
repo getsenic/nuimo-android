@@ -27,6 +27,12 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
     }
 
+    override fun disconnect() {
+        mainHandler.post {
+            gatt?.disconnect()
+        }
+    }
+
     private inner class GattCallback: BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) return
@@ -39,6 +45,10 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
                         gatt.discoverServices()
                     }
                     listeners.forEach { it.onConnect() }
+                }
+                BluetoothProfile.STATE_DISCONNECTED -> {
+                    this@NuimoBluetoothController.gatt = null
+                    listeners.forEach { it.onDisconnect() }
                 }
             }
         }

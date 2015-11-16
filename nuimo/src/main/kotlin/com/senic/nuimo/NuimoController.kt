@@ -16,6 +16,8 @@ abstract class NuimoController(address: String) {
 
     abstract fun connect()
 
+    abstract fun disconnect()
+
     public fun addControllerListener(controllerListener: NuimoControllerListener) {
         listeners.add(controllerListener)
     }
@@ -27,5 +29,6 @@ abstract class NuimoController(address: String) {
 
 public abstract class NuimoControllerListener {
     open fun onConnect() {}
+    open fun onDisconnect() {}
     open fun onLedMatrixFound() {}
 }
