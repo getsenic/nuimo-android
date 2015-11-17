@@ -32,14 +32,14 @@ class NuimoTest: AndroidTestCase() {
     }
 
     fun testNuimoControllerShouldConnect() {
-        connect() { nuimoController, completed ->
+        connect { nuimoController, completed ->
             nuimoController.disconnect()
             completed()
         }
     }
 
     fun testNuimoControllerShouldDisconnect() {
-        connect() { nuimoController, completed ->
+        connect { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onDisconnect() {
                     completed()
@@ -50,7 +50,7 @@ class NuimoTest: AndroidTestCase() {
     }
 
     fun testNuimoControllerShouldDiscoverLedMatrixService() {
-        connect() { nuimoController, completed ->
+        connect { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onLedMatrixFound() {
                     completed()
