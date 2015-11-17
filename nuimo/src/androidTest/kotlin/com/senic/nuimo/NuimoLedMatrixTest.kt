@@ -52,6 +52,20 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 false, false, false, false, false, false, false, false, false),
             NuimoLedMatrix("111111111" + "000000000").bits))
     }
+
+    fun testTooLongMatrixShouldConvertToItsBitRepresentation() {
+        assertTrue(booleanArrayEquals(booleanArrayOf(
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true),
+                NuimoLedMatrix(oneMatrixString + "000000000").bits))
+    }
 }
 
 private val zeroMatrixString =
