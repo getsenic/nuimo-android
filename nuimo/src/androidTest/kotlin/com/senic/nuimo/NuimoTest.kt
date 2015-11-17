@@ -49,13 +49,9 @@ class NuimoTest: AndroidTestCase() {
         }
     }
 
-    fun testNuimoControllerShouldDiscoverLedMatrixService() {
-        connect { nuimoController, completed ->
-            nuimoController.addControllerListener(object: NuimoControllerListener() {
-                override fun onLedMatrixFound() {
-                    completed()
-                }
-            })
+    fun testNuimoControllerShouldDiscoverGattServices() {
+        connectServices { nuimoController, completed ->
+            completed()
         }
     }
 
@@ -90,6 +86,18 @@ class NuimoTest: AndroidTestCase() {
             })
             discovery.stopDiscovery()
             nuimoController.connect()
+        }
+    }
+
+    // Discovers, connects, stops discovery and waits until all controller GATT services are found. Blocks until the "discovered" lambda calls the completed() method
+    private fun connectServices(connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
+        //TODO: Add timeout
+        connect { nuimoController, completed ->
+            nuimoController.addControllerListener(object: NuimoControllerListener() {
+                override fun onReady() {
+                    connected(nuimoController, completed)
+                }
+            })
         }
     }
 }

@@ -30,5 +30,5 @@ abstract class NuimoController(address: String) {
 public abstract class NuimoControllerListener {
     open fun onConnect() {}
     open fun onDisconnect() {}
-    open fun onLedMatrixFound() {}
+    open fun onReady() {}
 }

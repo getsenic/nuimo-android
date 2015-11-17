@@ -59,7 +59,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
                 println(device.name + "(" + device.address + "): " + it.uuid.toString());
                 matrixCharacteristic = matrixCharacteristic ?: it.characteristics.find { it.uuid == LED_MATRIX_CHARACTERISTIC_UUID }
                 if (matrixCharacteristic != null) {
-                    listeners.forEach { it.onLedMatrixFound() }
+                    listeners.forEach { it.onReady() }
                 }
             }
         }
