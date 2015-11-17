@@ -7,6 +7,7 @@
 
 package com.senic.nuimo
 
+import android.bluetooth.BluetoothAdapter
 import android.test.AndroidTestCase
 import java.util.concurrent.Semaphore
 
@@ -16,6 +17,12 @@ import java.util.concurrent.Semaphore
 //TODO: Try spek test framework: http://jetbrains.github.io/spek/
 //TODO: Add timeouts to each test
 class NuimoTest: AndroidTestCase() {
+
+    override fun setUp() {
+        super.setUp()
+        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        assertTrue("Bluetooth not present or not enabled", bluetoothAdapter?.isEnabled ?: false)
+    }
 
     fun testDiscoveryManagerShouldDiscoverOneBluetoothController() {
         discover { discovery, nuimoController, completed ->
