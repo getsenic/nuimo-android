@@ -18,71 +18,63 @@ import java.util.concurrent.Semaphore
 class NuimoTest: AndroidTestCase() {
 
     fun testDiscoveryManagerShouldDiscoverOneBluetoothController() {
-        val waitLock = Semaphore(0)
-        val discovery = NuimoDiscoveryManager(context)
-        discover(discovery) { nuimoController ->
+        discover { discovery, nuimoController, completed ->
             assertEquals(NuimoBluetoothController::class.java, nuimoController.javaClass)
-            waitLock.release()
+            completed()
         }
-        waitLock.acquire()
-        discovery.stopDiscovery()
     }
 
     fun testNuimoControllerShouldConnect() {
-        val waitLock = Semaphore(0)
-        val discovery = NuimoDiscoveryManager(context)
-        discoverAndConnect(discovery) { nuimoController ->
+        discoverAndConnect() { nuimoController, completed ->
             nuimoController.disconnect()
-            waitLock.release()
+            completed()
         }
-        waitLock.acquire()
-        discovery.stopDiscovery()
     }
 
     fun testNuimoControllerShouldDisconnect() {
-        val waitLock = Semaphore(0)
-        val discovery = NuimoDiscoveryManager(context)
-        discoverAndConnect(discovery) { nuimoController ->
+        discoverAndConnect() { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onDisconnect() {
-                    waitLock.release()
+                    completed()
                 }
             })
             nuimoController.disconnect()
         }
-        waitLock.acquire()
-        discovery.stopDiscovery()
     }
 
     fun testNuimoControllerShouldDiscoverLedMatrixService() {
-        val waitLock = Semaphore(0)
-        val discovery = NuimoDiscoveryManager(context)
-        discoverAndConnect(discovery) { nuimoController ->
+        discoverAndConnect() { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onLedMatrixFound() {
-                    waitLock.release()
+                    completed()
                 }
             })
         }
+    }
+
+    // Discovers a controller. Blocks until the "discovered" lambda releases the "waitLock".
+    fun discover(discovered: (discovery: NuimoDiscoveryManager, nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
+        val waitLock = Semaphore(0)
+        val discovery = NuimoDiscoveryManager(context)
+        discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
+            override fun onDiscoverNuimoController(nuimoController: NuimoController) {
+                println("Bluetooth device found " + nuimoController.address)
+                discovered(discovery, nuimoController, { waitLock.release() })
+            }
+        })
+        discovery.startDiscovery()
+        //TODO: Add timeout
         waitLock.acquire()
         discovery.stopDiscovery()
     }
 
-    fun discover(discovery: NuimoDiscoveryManager, discovered: (nuimoController: NuimoController) -> Unit) {
-        discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
-            override fun onDiscoverNuimoController(nuimoController: NuimoController) {
-                println("Bluetooth device found " + nuimoController.address)
-                discovered(nuimoController)
-            }
-        })
-        discovery.startDiscovery()
-    }
-
-    fun discoverAndConnect(discovery: NuimoDiscoveryManager, connected: (nuimoController: NuimoController) -> Unit) {
-        discover(discovery) { nuimoController ->
+    // Discovers and connects a controller and then stops discovery. Blocks until the "discovered" lambda releases the "waitLock".
+    fun discoverAndConnect(connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
+        //TODO: Add timeout
+        discover { discovery, nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onConnect() {
-                    connected(nuimoController)
+                    connected(nuimoController, completed)
                 }
             })
             discovery.stopDiscovery()
