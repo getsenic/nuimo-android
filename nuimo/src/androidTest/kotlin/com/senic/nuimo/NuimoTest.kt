@@ -25,14 +25,14 @@ class NuimoTest: AndroidTestCase() {
     }
 
     fun testNuimoControllerShouldConnect() {
-        discoverAndConnect() { nuimoController, completed ->
+        connect() { nuimoController, completed ->
             nuimoController.disconnect()
             completed()
         }
     }
 
     fun testNuimoControllerShouldDisconnect() {
-        discoverAndConnect() { nuimoController, completed ->
+        connect() { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onDisconnect() {
                     completed()
@@ -43,7 +43,7 @@ class NuimoTest: AndroidTestCase() {
     }
 
     fun testNuimoControllerShouldDiscoverLedMatrixService() {
-        discoverAndConnect() { nuimoController, completed ->
+        connect() { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onLedMatrixFound() {
                     completed()
@@ -52,8 +52,12 @@ class NuimoTest: AndroidTestCase() {
         }
     }
 
-    // Discovers a controller. Blocks until the "discovered" lambda releases the "waitLock".
-    fun discover(discovered: (discovery: NuimoDiscoveryManager, nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
+    /*
+     * Private test helper methods
+     */
+
+    // Discovers a controller. Blocks until the "discovered" lambda calls the completed() method
+    private fun discover(discovered: (discovery: NuimoDiscoveryManager, nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
         val waitLock = Semaphore(0)
         val discovery = NuimoDiscoveryManager(context)
         discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
@@ -68,8 +72,8 @@ class NuimoTest: AndroidTestCase() {
         discovery.stopDiscovery()
     }
 
-    // Discovers and connects a controller and then stops discovery. Blocks until the "discovered" lambda releases the "waitLock".
-    fun discoverAndConnect(connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
+    // Discovers and connects a controller and then stops discovery. Blocks until the "discovered" lambda calls the completed() method
+    private fun connect(connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
         //TODO: Add timeout
         discover { discovery, nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
