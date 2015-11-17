@@ -33,6 +33,14 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
     }
 
+    override fun displayLedMatrix(matrix: NuimoLedMatrix) {
+        if (matrixCharacteristic == null) { return }
+        matrixCharacteristic?.setValue(matrix.gattBytes())
+        mainHandler.post {
+            gatt?.writeCharacteristic(matrixCharacteristic)
+        }
+    }
+
     private inner class GattCallback: BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) return
@@ -63,6 +71,11 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
                 }
             }
         }
+
+        override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            println("onCharacteristicWrite " + characteristic.uuid + ": " + status)
+            listeners.forEach { it.onLedMatrixWrite() }
+        }
     }
 }
 
@@ -84,3 +97,9 @@ val NUIMO_SERVICE_UUIDS = arrayOf(
         LED_MATRIX_SERVICE_UUID,
         SENSOR_SERVICE_UUID
 )
+
+private fun NuimoLedMatrix.gattBytes(): ByteArray {
+    return arrayOf(255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255)
+            .map { it.toByte() }
+            .toByteArray()
+}

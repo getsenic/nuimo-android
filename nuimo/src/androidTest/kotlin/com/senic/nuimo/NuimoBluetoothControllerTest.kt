@@ -33,6 +33,24 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         }
     }
 
+    fun testNuimoControllerShouldSendLedMatrix() {
+        connectServices { nuimoController, completed ->
+            nuimoController.addControllerListener(object: NuimoControllerListener() {
+                override fun onLedMatrixWrite() = completed()
+            })
+            nuimoController.displayLedMatrix(NuimoLedMatrix(
+                    "*********" +
+                    "*********" +
+                    "*********" +
+                    "*********" +
+                    "*********" +
+                    "*********" +
+                    "*********" +
+                    "*********" +
+                    "*********"))
+        }
+    }
+
     /*
      * Private test helper methods
      */
