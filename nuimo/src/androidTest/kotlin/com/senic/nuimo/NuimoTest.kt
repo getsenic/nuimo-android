@@ -75,10 +75,12 @@ class NuimoTest: AndroidTestCase() {
         discovery.stopDiscovery()
     }
 
-    // Discovers and connects a controller and then stops discovery. Blocks until the "discovered" lambda calls the completed() method
+    // Discovers and connects a controller and then stops discovery. Blocks until the "discovered" lambda calls the completed() method. Then disconnects the controller.
     private fun connect(connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
         //TODO: Add timeout
+        var controller: NuimoController? = null
         discover { discovery, nuimoController, completed ->
+            controller = nuimoController
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onConnect() {
                     connected(nuimoController, completed)
@@ -87,9 +89,10 @@ class NuimoTest: AndroidTestCase() {
             discovery.stopDiscovery()
             nuimoController.connect()
         }
+        controller?.disconnect()
     }
 
-    // Discovers, connects, stops discovery and waits until all controller GATT services are found. Blocks until the "discovered" lambda calls the completed() method
+    // Discovers, connects, stops discovery and waits until all controller GATT services are found. Blocks until the "discovered" lambda calls the completed() method. Then disconnects the controller.
     private fun connectServices(connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
         //TODO: Add timeout
         connect { nuimoController, completed ->
