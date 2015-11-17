@@ -8,18 +8,19 @@
 package com.senic.nuimo
 
 class NuimoLedMatrix {
+    companion object {
+        val LED_COUNT = 81
+        val LedOffCharacters = " 0".toCharArray()
+    }
+
     val bits: BooleanArray
 
     constructor(string: String) {
-        bits = arrayOf(
-                false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false).toBooleanArray()
+        bits = string
+            .substring(0..Math.min(LED_COUNT, string.length)-1)
+            .padEnd(LED_COUNT, ' ')
+            .toCharArray()
+            .map { !LedOffCharacters.contains(it) }
+            .toBooleanArray()
     }
 }

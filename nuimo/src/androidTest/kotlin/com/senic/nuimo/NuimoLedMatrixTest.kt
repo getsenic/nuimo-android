@@ -24,6 +24,20 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 false, false, false, false, false, false, false, false, false),
             NuimoLedMatrix(zeroMatrixString).bits))
     }
+
+    fun testOneMatrixShouldConvertToItsBitRepresentation() {
+        assertTrue(booleanArrayEquals(booleanArrayOf(
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true,
+                true, true, true, true, true, true, true, true, true),
+            NuimoLedMatrix(oneMatrixString).bits))
+    }
 }
 
 private val zeroMatrixString =
@@ -36,6 +50,17 @@ private val zeroMatrixString =
         "         " +
         "         " +
         "         "
+
+private val oneMatrixString =
+        "111111111" +
+        "111111111" +
+        "111111111" +
+        "111111111" +
+        "111111111" +
+        "111111111" +
+        "111111111" +
+        "111111111" +
+        "111111111"
 
 //TODO: http://stackoverflow.com/questions/33758880/can-i-add-operators-to-existing-classes
 private fun booleanArrayEquals(a1: BooleanArray, a2: BooleanArray): Boolean {
