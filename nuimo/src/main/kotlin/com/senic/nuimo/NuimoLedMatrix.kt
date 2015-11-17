@@ -13,7 +13,7 @@ class NuimoLedMatrix {
         val LedOffCharacters = " 0".toCharArray()
     }
 
-    val bits: BooleanArray
+    val bits: List<Boolean>
 
     constructor(string: String) {
         bits = string
@@ -21,6 +21,5 @@ class NuimoLedMatrix {
             .padEnd(LED_COUNT, ' ')
             .toCharArray()
             .map { !LedOffCharacters.contains(it) }
-            .toBooleanArray()
     }
 }

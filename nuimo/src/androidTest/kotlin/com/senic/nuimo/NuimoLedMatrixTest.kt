@@ -12,7 +12,7 @@ import android.test.AndroidTestCase
 open class NuimoLedMatrixTest: AndroidTestCase() {
 
     fun testZeroMatrixShouldConvertToItsBitRepresentation() {
-        assertTrue(booleanArrayEquals(booleanArrayOf(
+        assertEquals(booleanArrayOf(
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
@@ -21,12 +21,12 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false),
-            NuimoLedMatrix(zeroMatrixString).bits))
+                false, false, false, false, false, false, false, false, false).toList(),
+            NuimoLedMatrix(zeroMatrixString).bits)
     }
 
     fun testOneMatrixShouldConvertToItsBitRepresentation() {
-        assertTrue(booleanArrayEquals(booleanArrayOf(
+        assertEquals(booleanArrayOf(
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
@@ -35,12 +35,12 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
-                true, true, true, true, true, true, true, true, true),
-            NuimoLedMatrix(oneMatrixString).bits))
+                true, true, true, true, true, true, true, true, true).toList(),
+            NuimoLedMatrix(oneMatrixString).bits)
     }
 
     fun testTooShortMatrixShouldConvertToItsBitRepresentation() {
-        assertTrue(booleanArrayEquals(booleanArrayOf(
+        assertEquals(booleanArrayOf(
                 true, true, true, true, true, true, true, true, true,
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
@@ -49,12 +49,12 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
-                false, false, false, false, false, false, false, false, false),
-            NuimoLedMatrix("111111111" + "000000000").bits))
+                false, false, false, false, false, false, false, false, false).toList(),
+            NuimoLedMatrix("111111111" + "000000000").bits)
     }
 
     fun testTooLongMatrixShouldConvertToItsBitRepresentation() {
-        assertTrue(booleanArrayEquals(booleanArrayOf(
+        assertEquals(booleanArrayOf(
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
@@ -63,8 +63,8 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
-                true, true, true, true, true, true, true, true, true),
-                NuimoLedMatrix(oneMatrixString + "000000000").bits))
+                true, true, true, true, true, true, true, true, true).toList(),
+            NuimoLedMatrix(oneMatrixString + "000000000").bits)
     }
 }
 
@@ -89,8 +89,3 @@ private val oneMatrixString =
         "111111111" +
         "111111111" +
         "111111111"
-
-//TODO: http://stackoverflow.com/questions/33758880/can-i-add-operators-to-existing-classes
-private fun booleanArrayEquals(a1: BooleanArray, a2: BooleanArray): Boolean {
-    return (a1.size === a2.size) && !(0..a1.size-1).map { a1[it] === a2[it] }.contains(false)
-}
