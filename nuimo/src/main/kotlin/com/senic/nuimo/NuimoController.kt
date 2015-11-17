@@ -18,11 +18,11 @@ abstract class NuimoController(address: String) {
 
     abstract fun disconnect()
 
-    public fun addControllerListener(controllerListener: NuimoControllerListener) {
+    fun addControllerListener(controllerListener: NuimoControllerListener) {
         listeners.add(controllerListener)
     }
 
-    public fun removeControllerListener(controllerListener: NuimoControllerListener) {
+    fun removeControllerListener(controllerListener: NuimoControllerListener) {
         listeners.remove(controllerListener)
     }
 }

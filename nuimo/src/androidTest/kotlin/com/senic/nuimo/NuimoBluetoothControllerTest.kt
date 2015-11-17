@@ -21,9 +21,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     fun testNuimoControllerShouldDisconnect() {
         connect { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
-                override fun onDisconnect() {
-                    completed()
-                }
+                override fun onDisconnect() = completed()
             })
             nuimoController.disconnect()
         }
@@ -46,9 +44,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         discover { discovery, nuimoController, completed ->
             controller = nuimoController
             nuimoController.addControllerListener(object: NuimoControllerListener() {
-                override fun onConnect() {
-                    connected(nuimoController, completed)
-                }
+                override fun onConnect() = connected(nuimoController, completed)
             })
             discovery.stopDiscovery()
             nuimoController.connect()
@@ -61,9 +57,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         //TODO: Add timeout
         connect { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
-                override fun onReady() {
-                    connected(nuimoController, completed)
-                }
+                override fun onReady() = connected(nuimoController, completed)
             })
         }
     }

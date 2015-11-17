@@ -14,7 +14,7 @@ import android.content.Context
 import java.util.ArrayList
 
 //TODO: Android requires the search to be stopped before connecting to any device. That requirement should be handled transparently by this library!
-public class NuimoDiscoveryManager(context: Context){
+class NuimoDiscoveryManager(context: Context){
     private val context = context
     private val bluetoothManager: BluetoothManager
     private val bluetoothAdapter: BluetoothAdapter
