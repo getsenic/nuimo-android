@@ -38,17 +38,18 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onLedMatrixWrite() = completed()
             })
-            nuimoController.displayLedMatrix(NuimoLedMatrix(
+            nuimoController.displayLedMatrix(NuimoLedMatrix((
+                    "  o *  o " +
+                    "o  ***  o" +
+                    "  *****  " +
+                    "o  ***  o" +
+                    "  *****  " +
+                    " ******* " +
                     "*********" +
-                    "*********" +
-                    "*********" +
-                    "*********" +
-                    "*********" +
-                    "*********" +
-                    "*********" +
-                    "*********" +
-                    "*********"))
+                    "   ***   " +
+                    " o ***  o")/*.toCharList().map { if (it == 'o' && Math.random() > 0.8) " " else it.toString()}.reduce { s, c -> s + c }*/))
         }
+
     }
 
     /*

@@ -11,7 +11,7 @@ import android.bluetooth.*
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import java.util.UUID
+import java.util.*
 
 public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
     private val device = bluetoothDevice
@@ -98,8 +98,31 @@ val NUIMO_SERVICE_UUIDS = arrayOf(
         SENSOR_SERVICE_UUID
 )
 
-private fun NuimoLedMatrix.gattBytes(): ByteArray {
-    return arrayOf(255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255)
-            .map { it.toByte() }
+//TODO: Should be only visible in this module but then it's not seen by the test
+fun NuimoLedMatrix.gattBytes(): ByteArray {
+    return bits
+            .chunk(8)
+            .map { it
+                    .mapIndexed { i, b -> if (b) { 1 shl i } else { 0 } }
+                    .reduce { n, i -> n + i }
+            }
+            .map { (if (it < 128) it else it - 256).toByte() }
             .toByteArray()
+}
+
+//TODO: Convert into generic function
+private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
+    var chunks = java.util.ArrayList<List<Boolean>>(size / n + 1)
+    var chunk = ArrayList<Boolean>(n)
+    var i = n
+    forEach {
+        chunk.add(it)
+        if (--i == 0) {
+            chunks.add(ArrayList<Boolean>(chunk))
+            chunk.clear()
+            i = n
+        }
+    }
+    if (chunk.isNotEmpty()) { chunks.add(chunk) }
+    return chunks
 }

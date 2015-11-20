@@ -66,6 +66,11 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 true, true, true, true, true, true, true, true, true).toList(),
             NuimoLedMatrix(oneMatrixString + "000000000").bits)
     }
+
+    fun testNuimoLedMatrixShouldConvertToItsGattByteRepresentation() {
+        assertEquals(arrayOf(-1, 0, 85, 0, 0, 0, 0, 0, 0, 0, 0).map { it.toByte() }.toList(),
+                NuimoLedMatrix("********        * * * * ").gattBytes().toList())
+    }
 }
 
 private val zeroMatrixString =
