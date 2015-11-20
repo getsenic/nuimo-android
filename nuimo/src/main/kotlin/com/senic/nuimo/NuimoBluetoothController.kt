@@ -149,10 +149,9 @@ private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
 private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent? {
     return when (uuid) {
         SENSOR_BUTTON_CHARACTERISTIC_UUID -> {
-            val value: Int? = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)
-            println(value)
             //TODO: BUTTON_PRESS should be encoded with 1 and BUTTON_RELEASE with 0. Strangely we need to swap values here.
-            return if (value != null) NuimoGestureEvent(if (value == 0) NuimoGestureEvent.NuimoGesture.BUTTON_PRESS else NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE, value) else null
+            val value = 1 - (getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0)
+            return NuimoGestureEvent(if (value == 1) NuimoGestureEvent.NuimoGesture.BUTTON_PRESS else NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE, value)
         }
         else -> null
     }
