@@ -52,6 +52,22 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
 
     }
 
+    fun testNuimoControllerShouldReceiveButtonPressAndReleaseEvents() {
+        connectServices { nuimoController, completed ->
+            nuimoController.addControllerListener(object: NuimoControllerListener() {
+                var pressed = false
+                override fun onGestureEvent(event: NuimoGestureEvent) {
+                    println(event.gesture.name)
+                    when (event.gesture) {
+                        NuimoGestureEvent.NuimoGesture.BUTTON_PRESS -> pressed = true
+                        NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE -> if(pressed) completed()
+                    }
+                }
+            })
+            //TODO: Show matrix that tells tester what gesture to perform
+        }
+    }
+
     /*
      * Private test helper methods
      */

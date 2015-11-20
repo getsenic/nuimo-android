@@ -34,4 +34,5 @@ public abstract class NuimoControllerListener {
     open fun onDisconnect() {}
     open fun onReady() {}
     open fun onLedMatrixWrite() {}
+    open fun onGestureEvent(event: NuimoGestureEvent) {}
 }

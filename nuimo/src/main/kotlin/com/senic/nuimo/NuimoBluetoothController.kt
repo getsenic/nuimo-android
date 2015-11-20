@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import java.util.*
 
+// TODO: Queue write requests to the device. Both characteristics writes as well as descriptor writes
 public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
     private val device = bluetoothDevice
     private val context = context
@@ -62,12 +63,11 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            println("On services discovered: " + status + (if (status == BluetoothGatt.GATT_SUCCESS) " success" else " failed"))
-            gatt.services?.forEach {
-                println(device.name + "(" + device.address + "): " + it.uuid.toString());
-                matrixCharacteristic = matrixCharacteristic ?: it.characteristics.find { it.uuid == LED_MATRIX_CHARACTERISTIC_UUID }
-                if (matrixCharacteristic != null) {
-                    listeners.forEach { it.onReady() }
+            println(device.address + " On services discovered: " + status + (if (status == BluetoothGatt.GATT_SUCCESS) " success" else " failed"))
+            gatt.services?.flatMap { it.characteristics }?.forEach {
+                when (it.uuid) {
+                    LED_MATRIX_CHARACTERISTIC_UUID -> {matrixCharacteristic = it; listeners.forEach { it.onReady() }}
+                    SENSOR_BUTTON_CHARACTERISTIC_UUID -> mainHandler.post { gatt.setCharacteristicNotification2(it, true) }
                 }
             }
         }
@@ -76,8 +76,23 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
             println("onCharacteristicWrite " + characteristic.uuid + ": " + status)
             listeners.forEach { it.onLedMatrixWrite() }
         }
+
+        override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+            when (characteristic.uuid) {
+                else -> {
+                    val event = characteristic.toNuimoGestureEvent()
+                    if (event != null) {
+                        listeners.forEach { it.onGestureEvent(event) }
+                    }
+                }
+            }
+        }
     }
 }
+
+/*
+ * Nuimo BLE GATT service and characteristic UUIDs
+ */
 
 private val BATTERY_SERVICE_UUID                   = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
 private val BATTERY_CHARACTERISTIC_UUID            = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
@@ -97,6 +112,10 @@ val NUIMO_SERVICE_UUIDS = arrayOf(
         LED_MATRIX_SERVICE_UUID,
         SENSOR_SERVICE_UUID
 )
+
+/*
+ * Private extensions
+ */
 
 //TODO: Should be only visible in this module but then it's not seen by the test
 fun NuimoLedMatrix.gattBytes(): ByteArray {
@@ -125,4 +144,26 @@ private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
     }
     if (chunk.isNotEmpty()) { chunks.add(chunk) }
     return chunks
+}
+
+private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent? {
+    return when (uuid) {
+        SENSOR_BUTTON_CHARACTERISTIC_UUID -> {
+            val value: Int? = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)
+            println(value)
+            //TODO: BUTTON_PRESS should be encoded with 1 and BUTTON_RELEASE with 0. Strangely we need to swap values here.
+            return if (value != null) NuimoGestureEvent(if (value == 0) NuimoGestureEvent.NuimoGesture.BUTTON_PRESS else NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE, value) else null
+        }
+        else -> null
+    }
+}
+
+private val CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+private fun BluetoothGatt.setCharacteristicNotification2(characteristic: BluetoothGattCharacteristic, enable: Boolean): Boolean {
+    setCharacteristicNotification(characteristic, enable)
+    // http://stackoverflow.com/questions/17910322/android-ble-api-gatt-notification-not-received
+    val descriptor = characteristic.getDescriptor(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID);
+    descriptor.setValue(if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+    return writeDescriptor(descriptor);
 }
