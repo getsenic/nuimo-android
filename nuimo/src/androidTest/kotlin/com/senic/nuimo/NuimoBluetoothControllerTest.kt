@@ -49,22 +49,20 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                     "   ***   " +
                     " o ***  o")/*.toCharList().map { if (it == 'o' && Math.random() > 0.8) " " else it.toString()}.reduce { s, c -> s + c }*/))
         }
-
     }
 
     fun testNuimoControllerShouldReceiveButtonPressAndReleaseEvents() {
         connectServices { nuimoController, completed ->
-            nuimoController.addControllerListener(object: NuimoControllerListener() {
-                var pressed = false
+            nuimoController.addControllerListener(object: LedMatrixGuidedNuimoControllerListener(nuimoController, "unpressed") {
+                override val matrixForState: Map<String, NuimoLedMatrix>
+                    get() = hashMapOf(Pair("unpressed", NuimoLedMatrix.Companion.pressButtonMatrix()), Pair("pressed", NuimoLedMatrix.Companion.releaseButtonMatrix()))
                 override fun onGestureEvent(event: NuimoGestureEvent) {
-                    println(event.gesture.name)
                     when (event.gesture) {
-                        NuimoGestureEvent.NuimoGesture.BUTTON_PRESS -> pressed = true
-                        NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE -> if(pressed) completed()
+                        NuimoGestureEvent.NuimoGesture.BUTTON_PRESS -> state = "pressed"
+                        NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE -> if(state == "pressed") completed()
                     }
                 }
             })
-            //TODO: Show matrix that tells tester what gesture to perform
         }
     }
 
@@ -97,3 +95,40 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         }
     }
 }
+
+private abstract class LedMatrixGuidedNuimoControllerListener(controller: NuimoController, initialState: String = ""): NuimoControllerListener() {
+    var controller = controller
+    var state: String = initialState
+        set(value) {
+          if (value != state) {
+              field = value
+              controller.displayLedMatrix(matrixForState[value]!!)
+          }
+        }
+    abstract val matrixForState: Map<String, NuimoLedMatrix>
+    init {
+        controller.displayLedMatrix(matrixForState[initialState]!!)
+    }
+}
+
+private fun NuimoLedMatrix.Companion.pressButtonMatrix() = NuimoLedMatrix(
+        "         " +
+        "***  *** " +
+        "*  * *  *" +
+        "*  * *  *" +
+        "***  *** " +
+        "*    *  *" +
+        "*    *  *" +
+        "*    *  *" +
+        "         ")
+
+private fun NuimoLedMatrix.Companion.releaseButtonMatrix() = NuimoLedMatrix(
+        "         " +
+        "***  ****" +
+        "*  * *   " +
+        "*  * *   " +
+        "***  *** " +
+        "*  * *   " +
+        "*  * *   " +
+        "*  * ****" +
+        "         ")

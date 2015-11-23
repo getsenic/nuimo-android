@@ -63,10 +63,12 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            println(device.address + " On services discovered: " + status + (if (status == BluetoothGatt.GATT_SUCCESS) " success" else " failed"))
+            println(device.address + " On services discovered: " + (if (status == BluetoothGatt.GATT_SUCCESS) " success" else " failed"))
             gatt.services?.flatMap { it.characteristics }?.forEach {
                 when (it.uuid) {
-                    LED_MATRIX_CHARACTERISTIC_UUID -> {matrixCharacteristic = it; listeners.forEach { it.onReady() }}
+                    LED_MATRIX_CHARACTERISTIC_UUID -> matrixCharacteristic = it;
+                    //TODO: Queue characteristic notification writes
+                    //TODO: Fire onReady only if all writes completed
                     SENSOR_BUTTON_CHARACTERISTIC_UUID -> mainHandler.post { gatt.setCharacteristicNotification2(it, true) }
                 }
             }
@@ -78,6 +80,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+            println("onCharacteristicChanged " + characteristic.uuid)
             when (characteristic.uuid) {
                 else -> {
                     val event = characteristic.toNuimoGestureEvent()
@@ -86,6 +89,12 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
                     }
                 }
             }
+        }
+
+        override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
+            println("onDescriptorWrite " + descriptor?.uuid)
+            //TODO: As soon as we have more characteristic notification writes, we need to check here if all writes are completed
+            listeners.forEach { it.onReady() }
         }
     }
 }
