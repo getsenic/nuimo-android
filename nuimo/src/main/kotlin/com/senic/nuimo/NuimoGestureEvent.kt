@@ -7,15 +7,15 @@
 
 package com.senic.nuimo
 
-class NuimoGestureEvent(gesture: NuimoGestureEvent.NuimoGesture, value: Int? = null) {
+class NuimoGestureEvent(gesture: NuimoGesture, value: Int? = null) {
     val gesture: NuimoGesture = gesture
     val value: Int? = value
+}
 
-    enum class NuimoGesture {
-        BUTTON_PRESS,
-        BUTTON_RELEASE,
-        //TODO: Synthesize rotation events into a single type "ROTATE"?
-        ROTATE_LEFT,
-        ROTATE_RIGHT,
-    }
+enum class NuimoGesture {
+    BUTTON_PRESS,
+    BUTTON_RELEASE,
+    //TODO: Synthesize rotation events into a single type "ROTATE"?
+    ROTATE_LEFT,
+    ROTATE_RIGHT,
 }

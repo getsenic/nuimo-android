@@ -60,8 +60,8 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                     get() = hashMapOf(Pair("unpressed", NuimoLedMatrix.pressButtonMatrix()), Pair("pressed", NuimoLedMatrix.releaseButtonMatrix()))
                 override fun onGestureEvent(event: NuimoGestureEvent) {
                     when (event.gesture) {
-                        NuimoGestureEvent.NuimoGesture.BUTTON_PRESS -> state = "pressed"
-                        NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE -> if(state == "pressed") completed()
+                        NuimoGesture.BUTTON_PRESS -> state = "pressed"
+                        NuimoGesture.BUTTON_RELEASE -> if(state == "pressed") completed()
                     }
                 }
             })
@@ -69,7 +69,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 
     fun testNuimoControllerShouldReceiveRotationEvents() {
-        var rotationTest = { rotationDirection: NuimoGestureEvent.NuimoGesture, matrixString: String ->
+        var rotationTest = { rotationDirection: NuimoGesture, matrixString: String ->
             connectServices { nuimoController, completed ->
                 nuimoController.addControllerListener(object : LedMatrixGuidedNuimoControllerListener(nuimoController, "0") {
                     var maxRotationValue = 2000
@@ -98,8 +98,8 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                 })
             }
         }
-        rotationTest(NuimoGestureEvent.NuimoGesture.ROTATE_RIGHT, NuimoLedMatrix.rotateRightMatrixString())
-        rotationTest(NuimoGestureEvent.NuimoGesture.ROTATE_LEFT, NuimoLedMatrix.rotateLeftMatrixString())
+        rotationTest(NuimoGesture.ROTATE_RIGHT, NuimoLedMatrix.rotateRightMatrixString())
+        rotationTest(NuimoGesture.ROTATE_LEFT, NuimoLedMatrix.rotateLeftMatrixString())
     }
 
     /*

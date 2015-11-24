@@ -192,11 +192,11 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
         SENSOR_BUTTON_CHARACTERISTIC_UUID -> {
             //TODO: BUTTON_PRESS should be encoded with 1 and BUTTON_RELEASE with 0. Strangely we need to swap values here.
             val value = 1 - (getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0)
-            return NuimoGestureEvent(if (value == 1) NuimoGestureEvent.NuimoGesture.BUTTON_PRESS else NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE, value)
+            return NuimoGestureEvent(if (value == 1) NuimoGesture.BUTTON_PRESS else NuimoGesture.BUTTON_RELEASE, value)
         }
         SENSOR_ROTATION_CHARACTERISTIC_UUID -> {
             val value = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0) ?: 0
-            return NuimoGestureEvent(if (value >= 0) NuimoGestureEvent.NuimoGesture.ROTATE_RIGHT else NuimoGestureEvent.NuimoGesture.ROTATE_LEFT, Math.abs(value))
+            return NuimoGestureEvent(if (value >= 0) NuimoGesture.ROTATE_RIGHT else NuimoGesture.ROTATE_LEFT, Math.abs(value))
         }
         else -> null
     }
