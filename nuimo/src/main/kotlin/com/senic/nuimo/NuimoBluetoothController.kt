@@ -21,6 +21,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     private var matrixCharacteristic: BluetoothGattCharacteristic? = null
     // At least some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var writeQueue = WriteQueue()
 
     override fun connect() {
         mainHandler.post {
@@ -35,9 +36,10 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     }
 
     override fun displayLedMatrix(matrix: NuimoLedMatrix) {
-        if (matrixCharacteristic == null) { return }
-        matrixCharacteristic?.setValue(matrix.gattBytes())
-        mainHandler.post {
+        if (gatt == null || matrixCharacteristic == null) { return }
+        writeQueue.push {
+            //TODO: Synchronize access to matrixCharacteristic, writeQueue executes lambda on different thread
+            matrixCharacteristic?.setValue(matrix.gattBytes())
             gatt?.writeCharacteristic(matrixCharacteristic)
         }
     }
@@ -63,24 +65,21 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            println(device.address + " On services discovered: " + (if (status == BluetoothGatt.GATT_SUCCESS) " success" else " failed"))
             gatt.services?.flatMap { it.characteristics }?.forEach {
-                when (it.uuid) {
-                    LED_MATRIX_CHARACTERISTIC_UUID -> matrixCharacteristic = it;
-                    //TODO: Queue characteristic notification writes
-                    //TODO: Fire onReady only if all writes completed
-                    SENSOR_BUTTON_CHARACTERISTIC_UUID -> mainHandler.post { gatt.setCharacteristicNotification2(it, true) }
+                if (LED_MATRIX_CHARACTERISTIC_UUID == it.uuid) {
+                    matrixCharacteristic = it
+                } else if (CHARACTERISTIC_NOTIFICATION_UUIDS.contains(it.uuid)) {
+                    writeQueue.push { gatt.setCharacteristicNotification2(it, true) }
                 }
             }
         }
 
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            println("onCharacteristicWrite " + characteristic.uuid + ": " + status)
+            writeQueue.next()
             listeners.forEach { it.onLedMatrixWrite() }
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            println("onCharacteristicChanged " + characteristic.uuid)
             when (characteristic.uuid) {
                 else -> {
                     val event = characteristic.toNuimoGestureEvent()
@@ -92,9 +91,34 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
 
         override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
-            println("onDescriptorWrite " + descriptor?.uuid)
-            //TODO: As soon as we have more characteristic notification writes, we need to check here if all writes are completed
-            listeners.forEach { it.onReady() }
+            if (!writeQueue.next()) {
+                listeners.forEach { it.onReady() }
+            }
+        }
+    }
+
+    private inner class WriteQueue {
+        private var queue = LinkedList<() -> Unit>()
+        private var idle = true
+
+        //TODO: Synchronize access
+        fun push(request: () -> Unit) {
+            when (idle) {
+                true  -> { idle = false; performWriteRequest(request) }
+                false -> queue.addLast(request)
+            }
+        }
+
+        fun next(): Boolean {
+            when (queue.size) {
+                0    -> idle = true
+                else -> performWriteRequest(queue.removeFirst())
+            }
+            return !idle
+        }
+
+        private fun performWriteRequest(request: () -> Unit) {
+            mainHandler.post { request() }
         }
     }
 }
@@ -120,6 +144,14 @@ val NUIMO_SERVICE_UUIDS = arrayOf(
         DEVICE_INFORMATION_SERVICE_UUID,
         LED_MATRIX_SERVICE_UUID,
         SENSOR_SERVICE_UUID
+)
+
+private val CHARACTERISTIC_NOTIFICATION_UUIDS = arrayOf(
+        //BATTERY_CHARACTERISTIC_UUID,
+        //SENSOR_FLY_CHARACTERISTIC_UUID,
+        //SENSOR_TOUCH_CHARACTERISTIC_UUID,
+        SENSOR_ROTATION_CHARACTERISTIC_UUID,
+        SENSOR_BUTTON_CHARACTERISTIC_UUID
 )
 
 /*
@@ -161,6 +193,10 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
             //TODO: BUTTON_PRESS should be encoded with 1 and BUTTON_RELEASE with 0. Strangely we need to swap values here.
             val value = 1 - (getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0)
             return NuimoGestureEvent(if (value == 1) NuimoGestureEvent.NuimoGesture.BUTTON_PRESS else NuimoGestureEvent.NuimoGesture.BUTTON_RELEASE, value)
+        }
+        SENSOR_ROTATION_CHARACTERISTIC_UUID -> {
+            val value = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0) ?: 0
+            return NuimoGestureEvent(if (value >= 0) NuimoGestureEvent.NuimoGesture.ROTATE_RIGHT else NuimoGestureEvent.NuimoGesture.ROTATE_LEFT, Math.abs(value))
         }
         else -> null
     }

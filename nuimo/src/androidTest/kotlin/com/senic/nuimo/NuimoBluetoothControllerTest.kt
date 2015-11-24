@@ -7,6 +7,8 @@
 
 package com.senic.nuimo
 
+import java.util.*
+
 //TODO: Try spek test framework: http://jetbrains.github.io/spek/
 //TODO: Add timeouts to each test
 class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
@@ -55,7 +57,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         connectServices { nuimoController, completed ->
             nuimoController.addControllerListener(object: LedMatrixGuidedNuimoControllerListener(nuimoController, "unpressed") {
                 override val matrixForState: Map<String, NuimoLedMatrix>
-                    get() = hashMapOf(Pair("unpressed", NuimoLedMatrix.Companion.pressButtonMatrix()), Pair("pressed", NuimoLedMatrix.Companion.releaseButtonMatrix()))
+                    get() = hashMapOf(Pair("unpressed", NuimoLedMatrix.pressButtonMatrix()), Pair("pressed", NuimoLedMatrix.releaseButtonMatrix()))
                 override fun onGestureEvent(event: NuimoGestureEvent) {
                     when (event.gesture) {
                         NuimoGestureEvent.NuimoGesture.BUTTON_PRESS -> state = "pressed"
@@ -64,6 +66,40 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                 }
             })
         }
+    }
+
+    fun testNuimoControllerShouldReceiveRotationEvents() {
+        var rotationTest = { rotationDirection: NuimoGestureEvent.NuimoGesture, matrixString: String ->
+            connectServices { nuimoController, completed ->
+                nuimoController.addControllerListener(object : LedMatrixGuidedNuimoControllerListener(nuimoController, "0") {
+                    var maxRotationValue = 2000
+                    var rotationValue = 0
+                    val steps = 18
+                    var matrixWritesCount = 0
+                    override val matrixForState: Map<String, NuimoLedMatrix>
+                        get() = {
+                            var matrices = HashMap<String, NuimoLedMatrix>()
+                            (0..steps).forEach { matrices[it.toString()] = NuimoLedMatrix(matrixString.substring(0..80 - steps) + "*".repeat(it) + " ".repeat(steps - it)) }
+                            matrices
+                        }()
+
+                    override fun onGestureEvent(event: NuimoGestureEvent) {
+                        if (event.gesture == rotationDirection) {
+                            rotationValue += event.value ?: 0
+                            println("RV = $rotationValue")
+                            state = Math.floor(rotationValue.toDouble() / maxRotationValue * steps).toInt().toString()
+                            if (matrixWritesCount > steps) completed()
+                        }
+                    }
+
+                    override fun onLedMatrixWrite() {
+                        matrixWritesCount++
+                    }
+                })
+            }
+        }
+        rotationTest(NuimoGestureEvent.NuimoGesture.ROTATE_RIGHT, NuimoLedMatrix.rotateRightMatrixString())
+        rotationTest(NuimoGestureEvent.NuimoGesture.ROTATE_LEFT, NuimoLedMatrix.rotateLeftMatrixString())
     }
 
     /*
@@ -132,3 +168,25 @@ private fun NuimoLedMatrix.Companion.releaseButtonMatrix() = NuimoLedMatrix(
         "*  * *   " +
         "*  * ****" +
         "         ")
+
+private fun NuimoLedMatrix.Companion.rotateRightMatrixString() =
+        "  ***    " +
+        " *   *   " +
+        "*     *  " +
+        "*     *  " +
+        "*   *****" +
+        " *   *** " +
+        "      *  " +
+        "         " +
+        "         "
+
+private fun NuimoLedMatrix.Companion.rotateLeftMatrixString() =
+        "    ***  " +
+        "   *   * " +
+        "  *     *" +
+        "  *     *" +
+        "*****   *" +
+        " ***   * " +
+        "  *      " +
+        "         " +
+        "         "

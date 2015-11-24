@@ -13,6 +13,9 @@ class NuimoGestureEvent(gesture: NuimoGestureEvent.NuimoGesture, value: Int? = n
 
     enum class NuimoGesture {
         BUTTON_PRESS,
-        BUTTON_RELEASE
+        BUTTON_RELEASE,
+        //TODO: Synthesize rotation events into a single type "ROTATE"?
+        ROTATE_LEFT,
+        ROTATE_RIGHT,
     }
 }
