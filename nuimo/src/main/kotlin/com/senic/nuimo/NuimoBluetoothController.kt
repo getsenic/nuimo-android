@@ -166,7 +166,7 @@ fun NuimoLedMatrix.gattBytes(): ByteArray {
                     .mapIndexed { i, b -> if (b) { 1 shl i } else { 0 } }
                     .reduce { n, i -> n + i }
             }
-            .map { (if (it < 128) it else it - 256).toByte() }
+            .map { it.toByte() }
             .toByteArray()
 }
 
