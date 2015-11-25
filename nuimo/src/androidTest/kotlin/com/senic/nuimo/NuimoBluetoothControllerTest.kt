@@ -58,13 +58,15 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
 
     fun testNuimoControllerShouldReceiveButtonPressAndReleaseEvents() {
         connectServices { nuimoController, completed ->
-            nuimoController.addControllerListener(object: LedMatrixGuidedNuimoControllerListener(nuimoController, "unpressed") {
-                override val matrixForState: Map<String, NuimoLedMatrix>
-                    get() = hashMapOf(Pair("unpressed", NuimoLedMatrix.pressButtonMatrix()), Pair("pressed", NuimoLedMatrix.releaseButtonMatrix()))
+            val UNPRESSED = 0
+            val PRESSED = 1
+            nuimoController.addControllerListener(object: LedMatrixGuidedNuimoControllerListener(nuimoController, UNPRESSED) {
+                override val matrixForState: Map<Int, NuimoLedMatrix>
+                    get() = hashMapOf(Pair(UNPRESSED, NuimoLedMatrix.pressButtonMatrix()), Pair(PRESSED, NuimoLedMatrix.releaseButtonMatrix()))
                 override fun onGestureEvent(event: NuimoGestureEvent) {
                     when (event.gesture) {
-                        NuimoGesture.BUTTON_PRESS -> state = "pressed"
-                        NuimoGesture.BUTTON_RELEASE -> if(state == "pressed") completed()
+                        NuimoGesture.BUTTON_PRESS   -> state = PRESSED
+                        NuimoGesture.BUTTON_RELEASE -> if (state == PRESSED) completed()
                     }
                 }
             })
@@ -72,66 +74,22 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 
     fun testNuimoControllerShouldReceiveRotationEvents() {
-        val rotationTest = { rotationDirection: NuimoGesture, matrixString: String ->
-            connectServices { nuimoController, completed ->
-                nuimoController.addControllerListener(object : LedMatrixGuidedNuimoControllerListener(nuimoController, "0") {
-                    var maxRotationValue = 2000
-                    var rotationValue = 0
-                    val steps = 18
-                    var matrixWritesCount = 0
-                    override val matrixForState: Map<String, NuimoLedMatrix>
-                        get() = {
-                            var matrices = HashMap<String, NuimoLedMatrix>()
-                            (0..steps).forEach { matrices[it.toString()] = NuimoLedMatrix(matrixString.substring(0..80 - steps) + "*".repeat(it) + " ".repeat(steps - it)) }
-                            matrices
-                        }()
-
-                    override fun onGestureEvent(event: NuimoGestureEvent) {
-                        if (event.gesture == rotationDirection) {
-                            rotationValue += event.value ?: 0
-                            println("RV = $rotationValue")
-                            state = Math.floor(rotationValue.toDouble() / maxRotationValue * steps).toInt().toString()
-                            if (matrixWritesCount > steps) completed()
-                        }
-                    }
-
-                    override fun onLedMatrixWrite() {
-                        matrixWritesCount++
-                    }
-                })
+        val rotationTest = { swipeDirection: NuimoGesture, matrixString: String ->
+            var accumulatedRotationValue = 0
+            val maxRotationValue = 2000
+            gestureRepetitionTest(swipeDirection, matrixString, 18) { steps, rotationValue ->
+                accumulatedRotationValue += rotationValue ?: 0
+                (accumulatedRotationValue.toDouble() / maxRotationValue * 18).toInt()
             }
         }
+
         rotationTest(NuimoGesture.ROTATE_RIGHT, NuimoLedMatrix.rotateRightMatrixString())
         rotationTest(NuimoGesture.ROTATE_LEFT, NuimoLedMatrix.rotateLeftMatrixString())
     }
 
     fun testNuimoControllerShouldReceiveSwipeEvents() {
         val swipeTest = { swipeDirection: NuimoGesture, matrixString: String ->
-            connectServices { nuimoController, completed ->
-                nuimoController.addControllerListener(object : LedMatrixGuidedNuimoControllerListener(nuimoController, "0") {
-                    //TODO: Synthesize code with rotation test
-                    val steps = 9
-                    var swipeCount = 0
-                    var matrixWritesCount = 0
-                    override val matrixForState: Map<String, NuimoLedMatrix>
-                        get() = {
-                            var matrices = HashMap<String, NuimoLedMatrix>()
-                            (0..steps).forEach { matrices[it.toString()] = NuimoLedMatrix(matrixString.substring(0..80 - steps) + "*".repeat(it) + " ".repeat(steps - it)) }
-                            matrices
-                        }()
-
-                    override fun onGestureEvent(event: NuimoGestureEvent) {
-                        if (event.gesture != swipeDirection) { return }
-                        swipeCount++
-                        state = swipeCount.toString()
-                        if (matrixWritesCount > steps) completed()
-                    }
-
-                    override fun onLedMatrixWrite() {
-                        matrixWritesCount++
-                    }
-                })
-            }
+            gestureRepetitionTest(swipeDirection, matrixString, 9) { steps, eventValue -> steps + 1 }
         }
 
         swipeTest(NuimoGesture.SWIPE_LEFT, NuimoLedMatrix.swipeLeftMatrixString())
@@ -163,23 +121,49 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     protected fun connectServices(connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
         //TODO: Add timeout
         connect { nuimoController, completed ->
+            nuimoController.defaultMatrixDisplayInterval = 20.0
             nuimoController.addControllerListener(object: NuimoControllerListener() {
                 override fun onReady() = connected(nuimoController, completed)
             })
         }
     }
+
+    // Connects a controller and expects a given number of gesture event repetitions
+    fun gestureRepetitionTest(gesture: NuimoGesture, matrixString: String, maxRepetitions: Int, updateRepetitions: (repetitions: Int, eventValue: Int?) -> Int) {
+        connectServices { nuimoController, completed ->
+            nuimoController.addControllerListener(object: LedMatrixGuidedNuimoControllerListener(nuimoController, 0) {
+                override val matrixForState: Map<Int, NuimoLedMatrix>
+                    get() = {
+                        var matrices = HashMap<Int, NuimoLedMatrix>()
+                        (0..maxRepetitions).forEach { matrices[it] = NuimoLedMatrix(matrixString.substring(0..80 - maxRepetitions) + "*".repeat(it) + " ".repeat(maxRepetitions - it)) }
+                        matrices
+                    }()
+                var matrixWritesCount = 0
+
+                override fun onGestureEvent(event: NuimoGestureEvent) {
+                    if (event.gesture != gesture) { return }
+                    state = updateRepetitions(state, event.value)
+                    if (matrixWritesCount > maxRepetitions) completed()
+                }
+
+                override fun onLedMatrixWrite() {
+                    matrixWritesCount++
+                }
+            })
+        }
+    }
 }
 
-private abstract class LedMatrixGuidedNuimoControllerListener(controller: NuimoController, initialState: String = ""): NuimoControllerListener() {
+private abstract class LedMatrixGuidedNuimoControllerListener(controller: NuimoController, initialState: Int = 0): NuimoControllerListener() {
     var controller = controller
-    var state: String = initialState
+    var state: Int = initialState
         set(value) {
           if (value != state) {
               field = value
               controller.displayLedMatrix(matrixForState[value] ?: NuimoLedMatrix.emoticonSadMatrix())
           }
         }
-    abstract val matrixForState: Map<String, NuimoLedMatrix>
+    abstract val matrixForState: Map<Int, NuimoLedMatrix>
     init {
         controller.displayLedMatrix(matrixForState[initialState] ?: NuimoLedMatrix.emoticonSadMatrix())
     }
@@ -274,12 +258,12 @@ private fun NuimoLedMatrix.Companion.swipeDownMatrixString() =
         "         "
 
 private fun NuimoLedMatrix.Companion.emoticonSadMatrix() = NuimoLedMatrix(
+        "***   ***" +
+        " **   ** " +
+        "         " +
+        "      *  " +
+        "         " +
         "  *****  " +
         " *     * " +
-        "* ** ** *" +
-        "*  * *  *" +
         "*       *" +
-        "*  ***  *" +
-        "* *   * *" +
-        " *     * " +
-        "  *****  ")
+        "         ")
