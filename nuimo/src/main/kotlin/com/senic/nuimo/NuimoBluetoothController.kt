@@ -13,7 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import java.util.*
 
-// TODO: Queue write requests to the device. Both characteristics writes as well as descriptor writes
+//TODO: This class is not yet thread-safe. writeQueue, listeners, matrixCharacteristic are being accessed from different threads.
 public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
     //TODO: Make this val and retrieve from the device itself
     var firmwareVersion = 0.1
@@ -55,6 +55,8 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     private inner class GattCallback: BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) return
+
+            writeQueue.clear()
 
             println("Connection state changed " + newState)
             when (newState) {
@@ -124,6 +126,8 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
             }
             return !idle
         }
+
+        fun clear() = queue.clear()
 
         private fun performWriteRequest(request: () -> Unit) {
             mainHandler.post { request() }
