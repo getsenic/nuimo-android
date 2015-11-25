@@ -44,7 +44,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
             var gattBytes = matrix.gattBytes()
             //TODO: Remove test for firmware version when we use latest version on every Nuimo
             if (firmwareVersion >= 0.1) {
-                gattBytes += byteArrayOf(255.toByte(), 10.toByte())
+                gattBytes += byteArrayOf(255.toByte(), Math.min(Math.max(displayInterval * 10.0, 0.0), 255.0).toByte())
             }
             //TODO: Synchronize access to matrixCharacteristic, writeQueue executes lambda on different thread
             matrixCharacteristic?.setValue(gattBytes)
