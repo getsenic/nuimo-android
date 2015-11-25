@@ -43,16 +43,31 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                 // Complete only after 2sec as otherwise the LED matrix disappears immediately as completed() disconnects from the device
                 override fun onLedMatrixWrite() { Handler(Looper.getMainLooper()).postDelayed({ completed() }, 2000) }
             })
-            nuimoController.displayLedMatrix(NuimoLedMatrix((
-                    "  o *  o " +
-                    "o  ***  o" +
-                    "  *****  " +
-                    "o  ***  o" +
-                    "  *****  " +
-                    " ******* " +
-                    "*********" +
-                    "   ***   " +
-                    " o ***  o")/*.toCharList().map { if (it == 'o' && Math.random() > 0.8) " " else it.toString()}.reduce { s, c -> s + c }*/))
+            nuimoController.displayLedMatrix(NuimoLedMatrix(NuimoLedMatrix.animatableMatrixString()))
+        }
+    }
+
+    fun testNuimoControllerShouldPlayLedMatrixAnimation() {
+
+        connectServices { nuimoController, completed ->
+            val frameCount = 100
+            var frameIndex = 0
+            val nextFrame = {
+                nuimoController.displayLedMatrix(NuimoLedMatrix(NuimoLedMatrix
+                    .animatableMatrixString()
+                    .toCharList()
+                    .map { if (it == 'o' && Math.random() > 0.8) " " else it.toString() }
+                    .reduce { s, c -> s + c }))
+            }
+            nuimoController.addControllerListener(object: NuimoControllerListener() {
+                override fun onLedMatrixWrite() {
+                    when (++frameIndex) {
+                        in 1..frameCount-1 -> nextFrame()
+                        else               -> completed()
+                    }
+                }
+            })
+            nextFrame()
         }
     }
 
@@ -267,3 +282,15 @@ private fun NuimoLedMatrix.Companion.emoticonSadMatrix() = NuimoLedMatrix(
         " *     * " +
         "*       *" +
         "         ")
+
+private fun NuimoLedMatrix.Companion.animatableMatrixString() =
+        "  o *  o " +
+        "o  ***  o" +
+        "  *****  " +
+        "o  ***  o" +
+        "  *****  " +
+        " ******* " +
+        "*********" +
+        "   ***   " +
+        " o ***  o"
+
