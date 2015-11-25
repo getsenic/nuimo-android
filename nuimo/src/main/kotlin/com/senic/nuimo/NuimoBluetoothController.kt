@@ -15,6 +15,9 @@ import java.util.*
 
 // TODO: Queue write requests to the device. Both characteristics writes as well as descriptor writes
 public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
+    //TODO: Make this val and retrieve from the device itself
+    var firmwareVersion = 0.1
+
     private val device = bluetoothDevice
     private val context = context
     private var gatt: BluetoothGatt? = null
@@ -35,11 +38,16 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
     }
 
-    override fun displayLedMatrix(matrix: NuimoLedMatrix) {
+    override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double) {
         if (gatt == null || matrixCharacteristic == null) { return }
         writeQueue.push {
+            var gattBytes = matrix.gattBytes()
+            //TODO: Remove test for firmware version when we use latest version on every Nuimo
+            if (firmwareVersion >= 0.1) {
+                gattBytes += byteArrayOf(255.toByte(), 10.toByte())
+            }
             //TODO: Synchronize access to matrixCharacteristic, writeQueue executes lambda on different thread
-            matrixCharacteristic?.setValue(matrix.gattBytes())
+            matrixCharacteristic?.setValue(gattBytes)
             gatt?.writeCharacteristic(matrixCharacteristic)
         }
     }

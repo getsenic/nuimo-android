@@ -7,6 +7,8 @@
 
 package com.senic.nuimo
 
+import android.os.Handler
+import android.os.Looper
 import java.util.*
 
 //TODO: Try spek test framework: http://jetbrains.github.io/spek/
@@ -38,7 +40,8 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     fun testNuimoControllerShouldSendLedMatrix() {
         connectServices { nuimoController, completed ->
             nuimoController.addControllerListener(object: NuimoControllerListener() {
-                override fun onLedMatrixWrite() = completed()
+                // Complete only after 2sec as otherwise the LED matrix disappears immediately as completed() disconnects from the device
+                override fun onLedMatrixWrite() { Handler(Looper.getMainLooper()).postDelayed({ completed() }, 2000) }
             })
             nuimoController.displayLedMatrix(NuimoLedMatrix((
                     "  o *  o " +

@@ -11,6 +11,7 @@ import java.util.*
 
 abstract class NuimoController(address: String) {
     val address: String = address
+    var defaultMatrixDisplayInterval = 2.0
 
     protected val listeners = ArrayList<NuimoControllerListener>()
 
@@ -18,7 +19,7 @@ abstract class NuimoController(address: String) {
 
     abstract fun disconnect()
 
-    abstract fun displayLedMatrix(matrix: NuimoLedMatrix)
+    abstract fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double = defaultMatrixDisplayInterval)
 
     fun addControllerListener(controllerListener: NuimoControllerListener) {
         listeners.add(controllerListener)
