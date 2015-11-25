@@ -72,7 +72,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 
     fun testNuimoControllerShouldReceiveRotationEvents() {
-        var rotationTest = { rotationDirection: NuimoGesture, matrixString: String ->
+        val rotationTest = { rotationDirection: NuimoGesture, matrixString: String ->
             connectServices { nuimoController, completed ->
                 nuimoController.addControllerListener(object : LedMatrixGuidedNuimoControllerListener(nuimoController, "0") {
                     var maxRotationValue = 2000
@@ -103,6 +103,41 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         }
         rotationTest(NuimoGesture.ROTATE_RIGHT, NuimoLedMatrix.rotateRightMatrixString())
         rotationTest(NuimoGesture.ROTATE_LEFT, NuimoLedMatrix.rotateLeftMatrixString())
+    }
+
+    fun testNuimoControllerShouldReceiveSwipeEvents() {
+        val swipeTest = { swipeDirection: NuimoGesture, matrixString: String ->
+            connectServices { nuimoController, completed ->
+                nuimoController.addControllerListener(object : LedMatrixGuidedNuimoControllerListener(nuimoController, "0") {
+                    //TODO: Synthesize code with rotation test
+                    val steps = 9
+                    var swipeCount = 0
+                    var matrixWritesCount = 0
+                    override val matrixForState: Map<String, NuimoLedMatrix>
+                        get() = {
+                            var matrices = HashMap<String, NuimoLedMatrix>()
+                            (0..steps).forEach { matrices[it.toString()] = NuimoLedMatrix(matrixString.substring(0..80 - steps) + "*".repeat(it) + " ".repeat(steps - it)) }
+                            matrices
+                        }()
+
+                    override fun onGestureEvent(event: NuimoGestureEvent) {
+                        if (event.gesture != swipeDirection) { return }
+                        swipeCount++
+                        state = swipeCount.toString()
+                        if (matrixWritesCount > steps) completed()
+                    }
+
+                    override fun onLedMatrixWrite() {
+                        matrixWritesCount++
+                    }
+                })
+            }
+        }
+
+        swipeTest(NuimoGesture.SWIPE_LEFT, NuimoLedMatrix.swipeLeftMatrixString())
+        swipeTest(NuimoGesture.SWIPE_RIGHT, NuimoLedMatrix.swipeRightMatrixString())
+        swipeTest(NuimoGesture.SWIPE_UP, NuimoLedMatrix.swipeUpMatrixString())
+        swipeTest(NuimoGesture.SWIPE_DOWN, NuimoLedMatrix.swipeDownMatrixString())
     }
 
     /*
@@ -141,12 +176,12 @@ private abstract class LedMatrixGuidedNuimoControllerListener(controller: NuimoC
         set(value) {
           if (value != state) {
               field = value
-              controller.displayLedMatrix(matrixForState[value]!!)
+              controller.displayLedMatrix(matrixForState[value] ?: NuimoLedMatrix.emoticonSadMatrix())
           }
         }
     abstract val matrixForState: Map<String, NuimoLedMatrix>
     init {
-        controller.displayLedMatrix(matrixForState[initialState]!!)
+        controller.displayLedMatrix(matrixForState[initialState] ?: NuimoLedMatrix.emoticonSadMatrix())
     }
 }
 
@@ -193,3 +228,58 @@ private fun NuimoLedMatrix.Companion.rotateLeftMatrixString() =
         "  *      " +
         "         " +
         "         "
+
+private fun NuimoLedMatrix.Companion.swipeLeftMatrixString() =
+        "    *    " +
+        "   **    " +
+        "  ****** " +
+        " ******* " +
+        "  ****** " +
+        "   **    " +
+        "    *    " +
+        "         " +
+        "         "
+
+private fun NuimoLedMatrix.Companion.swipeRightMatrixString() =
+        "    *    " +
+        "    **   " +
+        " ******  " +
+        " ******* " +
+        " ******  " +
+        "    **   " +
+        "    *    " +
+        "         " +
+        "         "
+
+private fun NuimoLedMatrix.Companion.swipeUpMatrixString() =
+        "    *    " +
+        "   ***   " +
+        "  *****  " +
+        " ******* " +
+        "   ***   " +
+        "   ***   " +
+        "   ***   " +
+        "         " +
+        "         "
+
+private fun NuimoLedMatrix.Companion.swipeDownMatrixString() =
+        "   ***   " +
+        "   ***   " +
+        "   ***   " +
+        " ******* " +
+        "  *****  " +
+        "   ***   " +
+        "    *    " +
+        "         " +
+        "         "
+
+private fun NuimoLedMatrix.Companion.emoticonSadMatrix() = NuimoLedMatrix(
+        "  *****  " +
+        " *     * " +
+        "* ** ** *" +
+        "*  * *  *" +
+        "*       *" +
+        "*  ***  *" +
+        "* *   * *" +
+        " *     * " +
+        "  *****  ")

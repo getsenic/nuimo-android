@@ -22,7 +22,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     private val context = context
     private var gatt: BluetoothGatt? = null
     private var matrixCharacteristic: BluetoothGattCharacteristic? = null
-    // At least some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
+    // At least for some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
 
@@ -157,7 +157,7 @@ val NUIMO_SERVICE_UUIDS = arrayOf(
 private val CHARACTERISTIC_NOTIFICATION_UUIDS = arrayOf(
         //BATTERY_CHARACTERISTIC_UUID,
         //SENSOR_FLY_CHARACTERISTIC_UUID,
-        //SENSOR_TOUCH_CHARACTERISTIC_UUID,
+        SENSOR_TOUCH_CHARACTERISTIC_UUID,
         SENSOR_ROTATION_CHARACTERISTIC_UUID,
         SENSOR_BUTTON_CHARACTERISTIC_UUID
 )
@@ -206,7 +206,57 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
             val value = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0) ?: 0
             return NuimoGestureEvent(if (value >= 0) NuimoGesture.ROTATE_RIGHT else NuimoGesture.ROTATE_LEFT, Math.abs(value))
         }
+        SENSOR_TOUCH_CHARACTERISTIC_UUID -> {
+            val button = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0) ?: 0
+            val event = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 2) ?: 0
+            for (i in 0..7) {
+                if (1.shl(i).and(button) == 0) { continue }
+                val touchDownGesture = GATT_TOUCH_DOWN_GESTURES[i / 2]
+                val eventGesture =
+                    when (event) {
+                        1    -> touchDownGesture
+                        2    -> touchDownGesture.touchReleaseGesture()
+                        3    -> null //TODO: Do we need to handle double touch gestures here as well?
+                        4    -> touchDownGesture.swipeGesture()
+                        else -> null
+                    }
+                if (eventGesture != null) {
+                    return NuimoGestureEvent(eventGesture, i)
+                }
+            }
+            return null
+        }
         else -> null
+    }
+}
+
+private val GATT_TOUCH_DOWN_GESTURES = arrayOf(NuimoGesture.TOUCH_LEFT_DOWN, NuimoGesture.TOUCH_TOP_DOWN, NuimoGesture.TOUCH_RIGHT_DOWN, NuimoGesture.TOUCH_BOTTOM_DOWN)
+
+fun NuimoGesture.touchReleaseGesture(): NuimoGesture? {
+    return when(this) {
+        NuimoGesture.TOUCH_LEFT_DOWN      -> NuimoGesture.TOUCH_LEFT_RELEASE
+        NuimoGesture.TOUCH_LEFT_RELEASE   -> NuimoGesture.TOUCH_LEFT_RELEASE
+        NuimoGesture.TOUCH_RIGHT_DOWN     -> NuimoGesture.TOUCH_RIGHT_RELEASE
+        NuimoGesture.TOUCH_RIGHT_RELEASE  -> NuimoGesture.TOUCH_RIGHT_RELEASE
+        NuimoGesture.TOUCH_TOP_DOWN       -> NuimoGesture.TOUCH_TOP_RELEASE
+        NuimoGesture.TOUCH_TOP_RELEASE    -> NuimoGesture.TOUCH_TOP_RELEASE
+        NuimoGesture.TOUCH_BOTTOM_DOWN    -> NuimoGesture.TOUCH_BOTTOM_RELEASE
+        NuimoGesture.TOUCH_BOTTOM_RELEASE -> NuimoGesture.TOUCH_BOTTOM_RELEASE
+        else                              -> null
+    }
+}
+
+fun NuimoGesture.swipeGesture(): NuimoGesture? {
+    return when(this) {
+        NuimoGesture.TOUCH_LEFT_DOWN      -> NuimoGesture.SWIPE_LEFT
+        NuimoGesture.TOUCH_LEFT_RELEASE   -> NuimoGesture.SWIPE_LEFT
+        NuimoGesture.TOUCH_RIGHT_DOWN     -> NuimoGesture.SWIPE_RIGHT
+        NuimoGesture.TOUCH_RIGHT_RELEASE  -> NuimoGesture.SWIPE_RIGHT
+        NuimoGesture.TOUCH_TOP_DOWN       -> NuimoGesture.SWIPE_UP
+        NuimoGesture.TOUCH_TOP_RELEASE    -> NuimoGesture.SWIPE_UP
+        NuimoGesture.TOUCH_BOTTOM_DOWN    -> NuimoGesture.SWIPE_DOWN
+        NuimoGesture.TOUCH_BOTTOM_RELEASE -> NuimoGesture.SWIPE_DOWN
+        else                              -> null
     }
 }
 

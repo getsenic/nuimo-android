@@ -18,4 +18,16 @@ enum class NuimoGesture {
     //TODO: Synthesize rotation events into a single type "ROTATE"?
     ROTATE_LEFT,
     ROTATE_RIGHT,
+    TOUCH_LEFT_DOWN,
+    TOUCH_LEFT_RELEASE,
+    TOUCH_RIGHT_DOWN,
+    TOUCH_RIGHT_RELEASE,
+    TOUCH_TOP_DOWN,
+    TOUCH_TOP_RELEASE,
+    TOUCH_BOTTOM_DOWN,
+    TOUCH_BOTTOM_RELEASE,
+    SWIPE_LEFT,
+    SWIPE_RIGHT,
+    SWIPE_UP,
+    SWIPE_DOWN
 }
