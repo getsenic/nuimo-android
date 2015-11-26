@@ -16,15 +16,10 @@ import java.util.ArrayList
 //TODO: Android requires the search to be stopped before connecting to any device. That requirement should be handled transparently by this library!
 class NuimoDiscoveryManager(context: Context){
     private val context = context
-    private val bluetoothManager: BluetoothManager
-    private val bluetoothAdapter: BluetoothAdapter
+    private val bluetoothManager: BluetoothManager by lazy { context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager }
+    private val bluetoothAdapter: BluetoothAdapter by lazy { bluetoothManager.adapter }
     private val scanCallback = ScanCallback()
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
-
-    init {
-        bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothAdapter = bluetoothManager.adapter
-    }
 
     public fun addDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
         discoveryListeners.add(discoveryListener)
