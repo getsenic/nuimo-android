@@ -24,7 +24,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
 
     fun testNuimoControllerShouldDisconnect() {
         connect { nuimoController, completed ->
-            nuimoController.addControllerListener(object: NuimoControllerListener() {
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onDisconnect() = completed()
             })
             nuimoController.disconnect()
@@ -39,7 +39,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
 
     fun testNuimoControllerShouldSendLedMatrix() {
         connectServices { nuimoController, completed ->
-            nuimoController.addControllerListener(object: NuimoControllerListener() {
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 // Complete only after 2sec as otherwise the LED matrix disappears immediately as completed() disconnects from the device
                 override fun onLedMatrixWrite() { Handler(Looper.getMainLooper()).postDelayed({ completed() }, 2000) }
             })
@@ -59,7 +59,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                     .map { if (it == 'o' && Math.random() > 0.8) " " else it.toString() }
                     .reduce { s, c -> s + c }))
             }
-            nuimoController.addControllerListener(object: NuimoControllerListener() {
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onLedMatrixWrite() {
                     when (++frameIndex) {
                         in 1..frameCount-1 -> nextFrame()
@@ -94,6 +94,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
             val maxRotationValue = 2000
             gestureRepetitionTest(swipeDirection, matrixString, 18) { steps, rotationValue ->
                 accumulatedRotationValue += rotationValue ?: 0
+                println("accumulatedRotationValue: $accumulatedRotationValue")
                 (accumulatedRotationValue.toDouble() / maxRotationValue * 18).toInt()
             }
         }
@@ -123,7 +124,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         var controller: NuimoController? = null
         discover { discovery, nuimoController, completed ->
             controller = nuimoController
-            nuimoController.addControllerListener(object: NuimoControllerListener() {
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onConnect() = connected(nuimoController, completed)
             })
             discovery.stopDiscovery()
@@ -137,7 +138,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         //TODO: Add timeout
         connect { nuimoController, completed ->
             nuimoController.defaultMatrixDisplayInterval = 20.0
-            nuimoController.addControllerListener(object: NuimoControllerListener() {
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onReady() = connected(nuimoController, completed)
             })
         }
@@ -169,7 +170,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 }
 
-private abstract class LedMatrixGuidedNuimoControllerListener(controller: NuimoController, initialState: Int = 0): NuimoControllerListener() {
+private abstract class LedMatrixGuidedNuimoControllerListener(controller: NuimoController, initialState: Int = 0): BaseNuimoControllerListener() {
     var controller = controller
     var state: Int = initialState
         set(value) {

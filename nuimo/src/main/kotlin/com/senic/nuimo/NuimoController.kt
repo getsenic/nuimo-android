@@ -30,10 +30,18 @@ abstract class NuimoController(address: String) {
     }
 }
 
-public abstract class NuimoControllerListener {
-    open fun onConnect() {}
-    open fun onDisconnect() {}
-    open fun onReady() {}
-    open fun onLedMatrixWrite() {}
-    open fun onGestureEvent(event: NuimoGestureEvent) {}
+public interface NuimoControllerListener {
+    fun onConnect() { println("") }
+    fun onDisconnect() {}
+    fun onReady() {}
+    fun onLedMatrixWrite() {}
+    fun onGestureEvent(event: NuimoGestureEvent) {}
+}
+
+public abstract class BaseNuimoControllerListener: NuimoControllerListener {
+    override fun onConnect() {}
+    override fun onDisconnect() {}
+    override fun onReady() {}
+    override fun onLedMatrixWrite() {}
+    override fun onGestureEvent(event: NuimoGestureEvent) {}
 }

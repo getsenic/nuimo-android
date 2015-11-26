@@ -40,6 +40,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
 
     override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double) {
         if (gatt == null || matrixCharacteristic == null) { return }
+        //TODO: Avoid write requests queuing up. Have only one write request queued and, if write request is not already running, only update the characteristic value
         writeQueue.push {
             var gattBytes = matrix.gattBytes()
             //TODO: Remove test for firmware version when we use latest version on every Nuimo
