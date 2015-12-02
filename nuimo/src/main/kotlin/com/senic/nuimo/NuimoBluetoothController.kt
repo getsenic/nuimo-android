@@ -93,7 +93,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             when (characteristic.uuid) {
                 else -> {
-                    val event = characteristic.toNuimoGestureEvent()
+                    val event = characteristic.toNuimoGestureEvent(firmwareVersion)
                     if (event != null) {
                         listeners.forEach { it.onGestureEvent(event) }
                     }
@@ -200,11 +200,11 @@ private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
     return chunks
 }
 
-private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent? {
+private fun BluetoothGattCharacteristic.toNuimoGestureEvent(firmwareVersion: Double): NuimoGestureEvent? {
     return when (uuid) {
         SENSOR_BUTTON_CHARACTERISTIC_UUID -> {
-            //TODO: BUTTON_PRESS should be encoded with 1 and BUTTON_RELEASE with 0. Strangely we need to swap values here.
-            val value = 1 - (getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0)
+            var value = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
+            if (firmwareVersion < 0.1) { value = 1 - value /* Press and release swapped */ }
             return NuimoGestureEvent(if (value == 1) NuimoGesture.BUTTON_PRESS else NuimoGesture.BUTTON_RELEASE, value)
         }
         SENSOR_ROTATION_CHARACTERISTIC_UUID -> {
