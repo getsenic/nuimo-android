@@ -12,6 +12,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 
 //TODO: This class is not yet thread-safe. writeQueue, listeners, matrixCharacteristic are being accessed from different threads.
 public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
@@ -111,21 +112,22 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
 private class WriteQueue {
     public var isIdle = true
         private set
-    private var queue = LinkedList<() -> Unit>()
+    private var queue = ConcurrentLinkedQueue<() -> Unit>()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    //TODO: Synchronize access. Using ConcurrentLinkedQueue should be enough.
     fun push(request: () -> Unit) {
         when (isIdle) {
-            true  -> { isIdle = false; performWriteRequest(request) }
-            false -> queue.addLast(request)
+            true  -> performWriteRequest(request)
+            false -> queue.add(request)
         }
+        isIdle = false
     }
 
     fun next(): Boolean {
-        when (queue.size) {
-            0    -> isIdle = true
-            else -> performWriteRequest(queue.removeFirst())
+        val request = queue.poll()
+        when (request) {
+            null -> isIdle = true
+            else -> performWriteRequest(request)
         }
         return !isIdle
     }
