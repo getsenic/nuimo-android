@@ -28,7 +28,8 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
 
     override fun connect() {
         mainHandler.post {
-            gatt = device.connectGatt(context, true, GattCallback())
+            //TODO: Figure out if and when to use autoConnect=true
+            gatt = device.connectGatt(context, false, GattCallback())
         }
     }
 
