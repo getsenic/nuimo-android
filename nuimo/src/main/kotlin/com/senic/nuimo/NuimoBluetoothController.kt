@@ -21,12 +21,13 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     private val device = bluetoothDevice
     private val context = context
     private var gatt: BluetoothGatt? = null
-    private var matrixCharacteristic: BluetoothGattCharacteristic? = null
     // At least for some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
+    private var matrixWriter: LedMatrixWriter? = null
 
     override fun connect() {
+        //TODO: What if controller is already connected?
         mainHandler.post {
             //TODO: Figure out if and when to use autoConnect=true
             gatt = device.connectGatt(context, false, GattCallback())
@@ -34,6 +35,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     }
 
     override fun disconnect() {
+        matrixWriter = null
         mainHandler.post {
             gatt?.disconnect()
             //TODO: What if onConnectionStateChange with STATE_DISCONNECTED is not called? We definitely need to call gatt.close() at some point!
@@ -41,18 +43,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     }
 
     override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double) {
-        if (gatt == null || matrixCharacteristic == null) { return }
-        //TODO: Avoid write requests queuing up. Have only one write request queued and, if write request is not already running, only update the characteristic value
-        writeQueue.push {
-            var gattBytes = matrix.gattBytes()
-            //TODO: Remove test for firmware version when we use latest version on every Nuimo
-            if (firmwareVersion >= 0.1) {
-                gattBytes += byteArrayOf(255.toByte(), Math.min(Math.max(displayInterval * 10.0, 0.0), 255.0).toByte())
-            }
-            //TODO: Synchronize access to matrixCharacteristic, writeQueue executes lambda on different thread
-            matrixCharacteristic?.setValue(gattBytes)
-            gatt?.writeCharacteristic(matrixCharacteristic)
-        }
+        matrixWriter?.write(matrix, displayInterval)
     }
 
     private inner class GattCallback: BluetoothGattCallback() {
@@ -60,6 +51,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
             if (status != BluetoothGatt.GATT_SUCCESS) return
 
             writeQueue.clear()
+            matrixWriter = null
 
             println("Connection state changed " + newState)
             when (newState) {
@@ -80,7 +72,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             gatt.services?.flatMap { it.characteristics }?.forEach {
                 if (LED_MATRIX_CHARACTERISTIC_UUID == it.uuid) {
-                    matrixCharacteristic = it
+                    matrixWriter = LedMatrixWriter(gatt, it, writeQueue, firmwareVersion)
                 } else if (CHARACTERISTIC_NOTIFICATION_UUIDS.contains(it.uuid)) {
                     writeQueue.push { gatt.setCharacteristicNotification2(it, true) }
                 }
@@ -88,8 +80,10 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
 
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            writeQueue.next()
-            listeners.forEach { it.onLedMatrixWrite() }
+            matrixWriter?.onWrite()
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                listeners.forEach { it.onLedMatrixWrite() }
+            }
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
@@ -109,31 +103,81 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
             }
         }
     }
+}
 
-    private inner class WriteQueue {
-        private var queue = LinkedList<() -> Unit>()
-        private var idle = true
+/**
+ * All write requests to Bluetooth GATT must be happen serialized. This said, write requests must not be invoked before the response of the previous write request is received.
+ */
+private class WriteQueue {
+    public var isIdle = true
+        private set
+    private var queue = LinkedList<() -> Unit>()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
-        //TODO: Synchronize access
-        fun push(request: () -> Unit) {
-            when (idle) {
-                true  -> { idle = false; performWriteRequest(request) }
-                false -> queue.addLast(request)
-            }
+    //TODO: Synchronize access. Using ConcurrentLinkedQueue should be enough.
+    fun push(request: () -> Unit) {
+        when (isIdle) {
+            true  -> { isIdle = false; performWriteRequest(request) }
+            false -> queue.addLast(request)
         }
+    }
 
-        fun next(): Boolean {
-            when (queue.size) {
-                0    -> idle = true
-                else -> performWriteRequest(queue.removeFirst())
-            }
-            return !idle
+    fun next(): Boolean {
+        when (queue.size) {
+            0    -> isIdle = true
+            else -> performWriteRequest(queue.removeFirst())
         }
+        return !isIdle
+    }
 
-        fun clear() = queue.clear()
+    fun clear() = queue.clear()
 
-        private fun performWriteRequest(request: () -> Unit) {
-            mainHandler.post { request() }
+    private fun performWriteRequest(request: () -> Unit) {
+        mainHandler.post { request() }
+    }
+}
+
+/**
+ * Send LED matrices to the controller. When the writer receives write commands faster than the controller can actually handle
+ * (thus write commands come in before write responses are received), it will send only the matrix of the very last write command.
+ */
+private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: BluetoothGattCharacteristic, writeQueue: WriteQueue, firmwareVersion: Double) {
+    private var gatt = gatt
+    private var matrixCharacteristic = matrixCharacteristic
+    private var writeQueue = writeQueue
+    private var firmwareVersion = firmwareVersion
+    private var currentMatrix: NuimoLedMatrix? = null
+    private var currentMatrixDisplayIntervalNanos = 0L
+    private var writeMatrixOnWriteResponseReceived = false
+
+    fun write(matrix: NuimoLedMatrix, displayInterval: Double) {
+        currentMatrix = matrix
+        currentMatrixDisplayIntervalNanos = (displayInterval * 1000000000.0).toLong()
+
+        when (writeQueue.isIdle) {
+            true  -> writeNow()
+            false -> writeMatrixOnWriteResponseReceived = true
+        }
+    }
+
+    private fun writeNow() {
+        var gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes()
+        //TODO: Remove test for firmware version when we use latest version on every Nuimo
+        if (firmwareVersion >= 0.1) {
+            gattBytes += byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalNanos / 100.0, 0.0), 255.0).toByte())
+        }
+        //TODO: Synchronize access to matrixCharacteristic, writeQueue executes lambda on different thread
+        writeQueue.push {
+            matrixCharacteristic.setValue(gattBytes)
+            gatt.writeCharacteristic(matrixCharacteristic)
+        }
+    }
+
+    fun onWrite() {
+        writeQueue.next()
+        if (writeMatrixOnWriteResponseReceived) {
+            writeMatrixOnWriteResponseReceived = false
+            writeNow()
         }
     }
 }
@@ -274,5 +318,6 @@ private fun BluetoothGatt.setCharacteristicNotification2(characteristic: Bluetoo
     // http://stackoverflow.com/questions/17910322/android-ble-api-gatt-notification-not-received
     val descriptor = characteristic.getDescriptor(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID);
     descriptor.setValue(if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+    //TODO: I observed cases where writeDescripter wasn't followed up by a onDescripterWrite notification -> We need a timeout here and error handling.
     return writeDescriptor(descriptor);
 }

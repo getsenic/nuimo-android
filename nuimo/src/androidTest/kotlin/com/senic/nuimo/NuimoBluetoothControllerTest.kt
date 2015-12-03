@@ -10,6 +10,7 @@ package com.senic.nuimo
 import android.os.Handler
 import android.os.Looper
 import java.util.*
+import kotlin.concurrent.schedule
 
 //TODO: Try spek test framework: http://jetbrains.github.io/spek/
 //TODO: Add timeouts to each test
@@ -47,8 +48,9 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         }
     }
 
-    fun testNuimoControllerShouldPlayLedMatrixAnimation() {
-
+    //TODO: Remove this test, the next one makes it obsolete. The x-mas animation is however very fancy. Put it somewhere else.
+    fun __testNuimoControllerShouldPlayLedMatrixAnimation() {
+        //TODO: Test if all frames are written within a certain time interval
         connectServices { nuimoController, completed ->
             val frameCount = 100
             var frameIndex = 0
@@ -69,6 +71,46 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
             })
             nextFrame()
         }
+    }
+
+    fun testNuimoControllerShouldSkipLedMatrixFramesIfDisplayRequestsAreInvokedFasterThanTheControllerCanDisplayThem() {
+        val sendFramesIntervalMillis = 10L
+        val sendFramesDurationMillis = 30000L
+        //TODO: Decrease max write duration to 1 sec as soon as the connection intervals got smaller
+        val maxWriteDurationForSingleFrameMillis = 1000L
+        val frameCount = sendFramesDurationMillis / sendFramesIntervalMillis
+        var framesWritten = 0
+        val expectedAnimationDurationMillis = sendFramesDurationMillis + maxWriteDurationForSingleFrameMillis
+        var actualAnimationDurationMillis = 0L
+
+        val timer = Timer()
+        connectServices { nuimoController, completed ->
+            var frameIndex = 0
+            // Send frames faster than the device can handle to force controller to drop frames during the frame animation
+            val animationStartedNanos = System.nanoTime()
+            timer.schedule(0, sendFramesIntervalMillis, {
+                if (++frameIndex <= frameCount) {
+                    nuimoController.displayLedMatrix(NuimoLedMatrix("*".repeat(frameIndex % 81 + 1)))
+                }
+            })
+            // Stop frame animation when expected animation duration is reached
+            timer.schedule(2 * maxWriteDurationForSingleFrameMillis, 200) {
+                if (System.nanoTime() - animationStartedNanos >= expectedAnimationDurationMillis * 1000000L) { completed() }
+            }
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
+                override fun onLedMatrixWrite() {
+                    framesWritten++
+                    actualAnimationDurationMillis = (System.nanoTime() - animationStartedNanos) / 1000000
+                }
+            })
+        }
+        timer.cancel()
+
+        println("Fast animation test has written $framesWritten frames of $frameCount total in $actualAnimationDurationMillis milliseconds (= ${(framesWritten / (actualAnimationDurationMillis / 1000.0)).toInt()} FPS). Maximum expected duration: $expectedAnimationDurationMillis milliseconds")
+
+        assertTrue("Nuimo controller should have written at least one frame", framesWritten > 0)
+        assertTrue("Nuimo controller should finished animation within $expectedAnimationDurationMillis milliseconds but it took $actualAnimationDurationMillis milliseconds", actualAnimationDurationMillis <= expectedAnimationDurationMillis)
+        assertTrue("Nuimo controller should have dropped some LED matrix frames but it wrote all $frameCount frames", framesWritten < frameCount)
     }
 
     fun testNuimoControllerShouldReceiveButtonPressAndReleaseEvents() {
