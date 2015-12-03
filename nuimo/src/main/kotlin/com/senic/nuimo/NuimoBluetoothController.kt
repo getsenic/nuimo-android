@@ -35,6 +35,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
     override fun disconnect() {
         mainHandler.post {
             gatt?.disconnect()
+            //TODO: What if onConnectionStateChange with STATE_DISCONNECTED is not called? We definitely need to call gatt.close() at some point!
         }
     }
 
@@ -68,6 +69,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
                     listeners.forEach { it.onConnect() }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
+                    gatt.close()
                     this@NuimoBluetoothController.gatt = null
                     listeners.forEach { it.onDisconnect() }
                 }
