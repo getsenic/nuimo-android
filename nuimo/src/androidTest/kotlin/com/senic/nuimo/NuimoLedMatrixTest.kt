@@ -8,6 +8,7 @@
 package com.senic.nuimo
 
 import android.test.AndroidTestCase
+import kotlin.test.assertNotEquals
 
 open class NuimoLedMatrixTest: AndroidTestCase() {
 
@@ -70,6 +71,14 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
     fun testNuimoLedMatrixShouldConvertToItsGattByteRepresentation() {
         assertEquals(arrayOf(-1, 0, 85, 0, 0, 0, 0, 0, 0, 0, 0).map { it.toByte() }.toList(),
                 NuimoLedMatrix("********        * * * * ").gattBytes().toList())
+    }
+
+    fun testNuimoLedMatrixShouldBeEqualToAnotherMatrixWithSameConfiguration() {
+        assertTrue("Two LED matrix with same configuration should be equal", NuimoLedMatrix("***") == NuimoLedMatrix("***"))
+    }
+
+    fun testNuimoLedMatrixShouldNotBeEqualToAnotherMatrixWithSameConfiguration() {
+        assertFalse("Two LED matrix with different configuration should not be equal", NuimoLedMatrix("***") == NuimoLedMatrix("* *"))
     }
 }
 

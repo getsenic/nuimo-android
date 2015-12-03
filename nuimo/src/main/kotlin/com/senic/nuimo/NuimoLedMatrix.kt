@@ -22,4 +22,11 @@ class NuimoLedMatrix {
             .toCharArray()
             .map { !LedOffCharacters.contains(it) }
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (other is NuimoLedMatrix) {
+            return bits.equals(other.bits)
+        }
+        return super.equals(other)
+    }
 }
