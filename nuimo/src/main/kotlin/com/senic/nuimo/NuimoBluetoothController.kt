@@ -28,7 +28,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
 
     override fun connect() {
         mainHandler.post {
-            device.connectGatt(context, true, GattCallback())
+            gatt = device.connectGatt(context, true, GattCallback())
         }
     }
 
@@ -62,7 +62,6 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
             println("Connection state changed " + newState)
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    this@NuimoBluetoothController.gatt = gatt
                     mainHandler.post {
                         gatt.discoverServices()
                     }
