@@ -146,6 +146,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 
     fun testNuimoControllerShouldReceiveSwipeEvents() {
+        //TODO: Request swipe gesture in arbitrary order an let test fail if user performs the wrong swipe. This recognizes too sensitive devices.
         val swipeTest = { swipeDirection: NuimoGesture, matrixString: String ->
             gestureRepetitionTest(swipeDirection, matrixString, 9) { steps, eventValue -> steps + 1 }
         }
@@ -196,16 +197,11 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                         (0..maxRepetitions).forEach { matrices[it] = NuimoLedMatrix(matrixString.substring(0..80 - maxRepetitions) + "*".repeat(it) + " ".repeat(maxRepetitions - it)) }
                         matrices
                     }()
-                var matrixWritesCount = 0
 
                 override fun onGestureEvent(event: NuimoGestureEvent) {
                     if (event.gesture != gesture) { return }
                     state = updateRepetitions(state, event.value)
-                    if (matrixWritesCount > maxRepetitions) completed()
-                }
-
-                override fun onLedMatrixWrite() {
-                    matrixWritesCount++
+                    if (state == maxRepetitions) completed()
                 }
             })
         }
