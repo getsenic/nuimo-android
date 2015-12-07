@@ -34,15 +34,15 @@ class NuimoDiscoveryManager(context: Context) {
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
     private var shouldStartDiscoveryWhenPermissionsGranted = false
 
-    public fun addDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
+    fun addDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
         discoveryListeners.add(discoveryListener)
     }
 
-    public fun removeDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
+    fun removeDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
         discoveryListeners.remove(discoveryListener)
     }
 
-    public fun startDiscovery(): Boolean {
+    fun startDiscovery(): Boolean {
         shouldStartDiscoveryWhenPermissionsGranted = true
         if (!checkPermissions(context as? Activity)) { return false }
         if (!checkBluetoothEnabled()) { return false }
@@ -61,7 +61,7 @@ class NuimoDiscoveryManager(context: Context) {
         return true
     }
 
-    public fun stopDiscovery() {
+    fun stopDiscovery() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             bluetoothAdapter.bluetoothLeScanner.stopScan(scanCallbackApi21)
         }
@@ -92,7 +92,7 @@ class NuimoDiscoveryManager(context: Context) {
      *         running on Android <= 5.1 or targets an Android SDK version <= 22.
      *         Returns false if the user has not yet granted the necessary permissions.
      */
-    public fun checkPermissions(activity: Activity?): Boolean {
+    fun checkPermissions(activity: Activity?): Boolean {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) { return true }
         if (activity != null) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_COARSE_LOCATION)) {
@@ -115,7 +115,7 @@ class NuimoDiscoveryManager(context: Context) {
      *
      * @return True if necessary permissions have been granted by the user otherwise false.
      */
-    public fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray): Boolean {
+    fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray): Boolean {
         if (requestCode != PERMISSIONS_REQUEST_CODE) { return false }
 
         val permissionIndex = permissions.indexOf(Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -131,13 +131,13 @@ class NuimoDiscoveryManager(context: Context) {
     /**
      * @return true if the device has Bluetooth enabled, otherwise false.
      */
-    public fun checkBluetoothEnabled() = BluetoothAdapter.getDefaultAdapter()?.isEnabled ?: false
+    fun checkBluetoothEnabled() = BluetoothAdapter.getDefaultAdapter()?.isEnabled ?: false
 
     /**
      * @return true if the device has GPS enabled, otherwise false. Unfortunately necessary for Android 6.0+
      */
     //TODO: Remove when and if possible, see https://code.google.com/p/android/issues/detail?id=189090
-    public fun checkLocationServiceEnabled() = (context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager)?.isProviderEnabled(LocationManager.GPS_PROVIDER) ?: false
+    fun checkLocationServiceEnabled() = (context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager)?.isProviderEnabled(LocationManager.GPS_PROVIDER) ?: false
 
     private fun onDeviceFound(device: BluetoothDevice) {
         if (device.name != "Nuimo") { return }
@@ -155,6 +155,6 @@ class NuimoDiscoveryManager(context: Context) {
     }
 }
 
-public interface NuimoDiscoveryListener {
+interface NuimoDiscoveryListener {
     fun onDiscoverNuimoController(nuimoController: NuimoController)
 }

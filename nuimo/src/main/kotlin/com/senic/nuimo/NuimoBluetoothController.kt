@@ -15,7 +15,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 //TODO: This class is not yet thread-safe. writeQueue, listeners, matrixCharacteristic are being accessed from different threads.
-public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
+class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
     //TODO: Make this val and retrieve from the device itself
     var firmwareVersion = 0.1
 
@@ -114,7 +114,7 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
  * All write requests to Bluetooth GATT must be happen serialized. This said, write requests must not be invoked before the response of the previous write request is received.
  */
 private class WriteQueue {
-    public var isIdle = true
+    var isIdle = true
         private set
     private var queue = ConcurrentLinkedQueue<() -> Unit>()
     private val mainHandler = Handler(Looper.getMainLooper())

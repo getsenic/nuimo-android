@@ -7,7 +7,6 @@
 
 package com.senic.nuimo
 
-import android.bluetooth.BluetoothAdapter
 import android.test.AndroidTestCase
 import java.util.concurrent.Semaphore
 

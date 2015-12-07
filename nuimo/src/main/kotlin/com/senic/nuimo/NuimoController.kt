@@ -30,7 +30,7 @@ abstract class NuimoController(address: String) {
     }
 }
 
-public interface NuimoControllerListener {
+interface NuimoControllerListener {
     fun onConnect() { println("") }
     fun onDisconnect() {}
     fun onReady() {}
@@ -38,7 +38,7 @@ public interface NuimoControllerListener {
     fun onGestureEvent(event: NuimoGestureEvent) {}
 }
 
-public abstract class BaseNuimoControllerListener: NuimoControllerListener {
+abstract class BaseNuimoControllerListener: NuimoControllerListener {
     override fun onConnect() {}
     override fun onDisconnect() {}
     override fun onReady() {}
