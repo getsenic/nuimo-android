@@ -76,11 +76,10 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     fun testNuimoControllerShouldSkipLedMatrixFramesIfDisplayRequestsAreInvokedFasterThanTheControllerCanDisplayThem() {
         val sendFramesIntervalMillis = 10L
         val sendFramesDurationMillis = 30000L
-        //TODO: Decrease max write duration to 1 sec as soon as the connection intervals got smaller
         val maxWriteDurationForSingleFrameMillis = 1000L
         val frameCount = sendFramesDurationMillis / sendFramesIntervalMillis
         var framesWritten = 0
-        val expectedAnimationDurationMillis = sendFramesDurationMillis + maxWriteDurationForSingleFrameMillis
+        val expectedAnimationDurationMillis = sendFramesDurationMillis + 2 * maxWriteDurationForSingleFrameMillis
         var actualAnimationDurationMillis = 0L
 
         val timer = Timer()
@@ -109,7 +108,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         println("Fast animation test has written $framesWritten frames of $frameCount total in $actualAnimationDurationMillis milliseconds (= ${(framesWritten / (actualAnimationDurationMillis / 1000.0)).toInt()} FPS). Maximum expected duration: $expectedAnimationDurationMillis milliseconds")
 
         assertTrue("Nuimo controller should have written at least one frame", framesWritten > 0)
-        assertTrue("Nuimo controller should finished animation within $expectedAnimationDurationMillis milliseconds but it took $actualAnimationDurationMillis milliseconds", actualAnimationDurationMillis <= expectedAnimationDurationMillis)
+        assertTrue("Nuimo controller should have finished animation within $expectedAnimationDurationMillis milliseconds but it took $actualAnimationDurationMillis milliseconds", actualAnimationDurationMillis <= expectedAnimationDurationMillis)
         assertTrue("Nuimo controller should have dropped some LED matrix frames but it wrote all $frameCount frames", framesWritten < frameCount)
     }
 
