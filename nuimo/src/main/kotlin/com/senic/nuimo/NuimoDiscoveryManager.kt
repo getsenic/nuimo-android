@@ -93,6 +93,9 @@ class NuimoDiscoveryManager(context: Context) {
      *         Returns false if the user has not yet granted the necessary permissions.
      */
     fun checkPermissions(activity: Activity?): Boolean {
+        // Currently ACCESS_COARSE_LOCATION is only needed for API level >= 23
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) { return true }
+        // Check ACCESS_COARSE_LOCATION permission and request if not yet granted
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) { return true }
         if (activity != null) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_COARSE_LOCATION)) {
