@@ -81,9 +81,13 @@ public class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context:
         }
 
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            matrixWriter?.onWrite()
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                listeners.forEach { it.onLedMatrixWrite() }
+            when (characteristic.uuid) {
+                LED_MATRIX_CHARACTERISTIC_UUID -> {
+                    matrixWriter?.onWrite()
+                    if (status == BluetoothGatt.GATT_SUCCESS) {
+                        listeners.forEach { it.onLedMatrixWrite() }
+                    }
+                }
             }
         }
 
