@@ -116,8 +116,7 @@ class NuimoDiscoveryManager(context: Context){
      * @return true if the user has enabled Bluetooth, otherwise false.
      */
     public fun checkBluetoothEnabled(): Boolean {
-        //TODO: Implement
-        return true
+        return BluetoothAdapter.getDefaultAdapter()?.isEnabled ?: false
     }
 
     private inner class ScanCallback: BluetoothAdapter.LeScanCallback {
