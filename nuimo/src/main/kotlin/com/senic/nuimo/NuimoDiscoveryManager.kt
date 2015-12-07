@@ -12,14 +12,16 @@ import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import java.util.ArrayList
 
 //TODO: Android requires the search to be stopped before connecting to any device. That requirement should be handled transparently by this library!
-class NuimoDiscoveryManager(context: Context){
+class NuimoDiscoveryManager(context: Context) {
     companion object {
         const val PERMISSIONS_REQUEST_CODE = 235
     }
@@ -27,7 +29,8 @@ class NuimoDiscoveryManager(context: Context){
     private val context = context
     private val bluetoothManager: BluetoothManager by lazy { context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager }
     private val bluetoothAdapter: BluetoothAdapter by lazy { bluetoothManager.adapter }
-    private val scanCallback = ScanCallback()
+    private val scanCallbackApi18: ScanCallbackApi18 by lazy { ScanCallbackApi18() }
+    private val scanCallbackApi21: ScanCallbackApi21 by lazy { ScanCallbackApi21() }
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
     private var shouldStartDiscoveryWhenPermissionsGranted = false
 
@@ -45,14 +48,27 @@ class NuimoDiscoveryManager(context: Context){
         if (!checkBluetoothEnabled()) { return false }
 
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
-        bluetoothAdapter.startLeScan(/*NUIMO_SERVICE_UUIDS,*/ scanCallback)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            if (!checkLocationServiceEnabled()) { return false }
+            bluetoothAdapter.bluetoothLeScanner.startScan(scanCallbackApi21)
+        }
+        else {
+            @Suppress("DEPRECATION")
+            bluetoothAdapter.startLeScan(/*NUIMO_SERVICE_UUIDS,*/ scanCallbackApi18)
+        }
         println("Nuimo discovery started")
 
         return true
     }
 
     public fun stopDiscovery() {
-        bluetoothAdapter.stopLeScan(scanCallback)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            bluetoothAdapter.bluetoothLeScanner.stopScan(scanCallbackApi21)
+        }
+        else {
+            @Suppress("DEPRECATION")
+            bluetoothAdapter.stopLeScan(scanCallbackApi18)
+        }
         shouldStartDiscoveryWhenPermissionsGranted = false
         println("Nuimo discovery stopped")
     }
@@ -113,20 +129,29 @@ class NuimoDiscoveryManager(context: Context){
     }
 
     /**
-     * @return true if the user has enabled Bluetooth, otherwise false.
+     * @return true if the device has Bluetooth enabled, otherwise false.
      */
-    public fun checkBluetoothEnabled(): Boolean {
-        return BluetoothAdapter.getDefaultAdapter()?.isEnabled ?: false
+    public fun checkBluetoothEnabled() = BluetoothAdapter.getDefaultAdapter()?.isEnabled ?: false
+
+    /**
+     * @return true if the device has GPS enabled, otherwise false. Unfortunately necessary for Android 6.0+
+     */
+    //TODO: Remove when and if possible, see https://code.google.com/p/android/issues/detail?id=189090
+    public fun checkLocationServiceEnabled() = (context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager)?.isProviderEnabled(LocationManager.GPS_PROVIDER) ?: false
+
+    private fun onDeviceFound(device: BluetoothDevice) {
+        if (device.name != "Nuimo") { return }
+        println("Device found " + device.address + ", " + device.name)
+        discoveryListeners.forEach { it.onDiscoverNuimoController(NuimoBluetoothController(device, context)) }
     }
 
-    private inner class ScanCallback: BluetoothAdapter.LeScanCallback {
-        //TODO: This might help: https://github.com/movisens/SmartGattLib/tree/master/src/main/java/com/movisens/smartgattlib
+    private inner class ScanCallbackApi18 : BluetoothAdapter.LeScanCallback {
+        override fun onLeScan(device: BluetoothDevice, rssi: Int, scanRecord: ByteArray?) = onDeviceFound(device)
+    }
 
-        override fun onLeScan(device: BluetoothDevice, rssi: Int, scanRecord: ByteArray?) {
-            println("Device found " + device.address + ", " + device.name)
-            if (device.name != "Nuimo") { return }
-            discoveryListeners.forEach { it.onDiscoverNuimoController(NuimoBluetoothController(device, context)) }
-        }
+    private inner class ScanCallbackApi21 : android.bluetooth.le.ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult) = onDeviceFound(result.device)
+        override fun onScanFailed(errorCode: Int) { /* TODO: Notify listeners */ }
     }
 }
 
