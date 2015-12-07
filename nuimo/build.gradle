@@ -14,8 +14,8 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 dependencies {
+    compile 'com.android.support:appcompat-v7:23.1.1'
     compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
-    compile 'com.android.support:appcompat-v7:23.1.0'
 }
 
 android {
