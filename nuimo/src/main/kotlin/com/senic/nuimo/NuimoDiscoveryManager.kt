@@ -93,7 +93,7 @@ class NuimoDiscoveryManager(context: Context) {
      *         Returns false if the user has not yet granted the necessary permissions.
      */
     fun checkPermissions(activity: Activity?): Boolean {
-        // Currently ACCESS_COARSE_LOCATION is only needed for API level >= 23
+        // Currently ACCESS_COARSE_LOCATION is only needed for API level >= 23 (https://code.google.com/p/android/issues/detail?id=196485)
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) { return true }
         // Check ACCESS_COARSE_LOCATION permission and request if not yet granted
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) { return true }
@@ -139,7 +139,7 @@ class NuimoDiscoveryManager(context: Context) {
     /**
      * @return true if the device has GPS enabled, otherwise false. Unfortunately necessary for Android 6.0+
      */
-    //TODO: Remove when and if possible, see https://code.google.com/p/android/issues/detail?id=189090
+    //TODO: Remove when and if possible, see https://code.google.com/p/android/issues/detail?id=189090 and https://code.google.com/p/android/issues/detail?id=196485
     fun checkLocationServiceEnabled() = (context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager)?.isProviderEnabled(LocationManager.GPS_PROVIDER) ?: false
 
     private fun onDeviceFound(device: BluetoothDevice) {
