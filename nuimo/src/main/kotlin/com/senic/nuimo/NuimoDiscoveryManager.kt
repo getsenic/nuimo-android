@@ -12,7 +12,6 @@ import android.annotation.TargetApi
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.content.pm.PackageManager
@@ -28,8 +27,7 @@ class NuimoDiscoveryManager(context: Context) {
     }
 
     private val context = context
-    private val bluetoothManager: BluetoothManager by lazy { context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager }
-    private val bluetoothAdapter: BluetoothAdapter by lazy { bluetoothManager.adapter }
+    private val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter() //: BluetoothAdapter by lazy { bluetoothManager.adapter }
     private val scanCallbackApi18: ScanCallbackApi18 by lazy { ScanCallbackApi18() }
     private val scanCallbackApi21: ScanCallbackApi21 by lazy { ScanCallbackApi21() }
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
@@ -46,6 +44,7 @@ class NuimoDiscoveryManager(context: Context) {
     fun startDiscovery(): Boolean {
         shouldStartDiscoveryWhenPermissionsGranted = true
         if (!checkPermissions(context as? Activity)) { return false }
+        //TODO: Start discovery automatically when bluetooth is turned on later (unless stopDiscovery was called)
         if (!checkBluetoothEnabled()) { return false }
 
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
