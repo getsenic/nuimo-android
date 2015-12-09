@@ -27,7 +27,7 @@ class NuimoDiscoveryManager(context: Context) {
     }
 
     private val context = context
-    private val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter() //: BluetoothAdapter by lazy { bluetoothManager.adapter }
+    private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter() //: BluetoothAdapter by lazy { bluetoothManager.adapter }
     private val scanCallbackApi18: ScanCallbackApi18 by lazy { ScanCallbackApi18() }
     private val scanCallbackApi21: ScanCallbackApi21 by lazy { ScanCallbackApi21() }
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
@@ -50,27 +50,25 @@ class NuimoDiscoveryManager(context: Context) {
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             if (!checkLocationServiceEnabled()) { return false }
-            bluetoothAdapter.bluetoothLeScanner.startScan(scanCallbackApi21)
+            bluetoothAdapter?.bluetoothLeScanner?.startScan(scanCallbackApi21)
         }
         else {
             @Suppress("DEPRECATION")
-            bluetoothAdapter.startLeScan(/*NUIMO_SERVICE_UUIDS,*/ scanCallbackApi18)
+            bluetoothAdapter?.startLeScan(/*NUIMO_SERVICE_UUIDS,*/ scanCallbackApi18)
         }
-        println("Nuimo discovery started")
 
         return true
     }
 
     fun stopDiscovery() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            bluetoothAdapter.bluetoothLeScanner.stopScan(scanCallbackApi21)
+            bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallbackApi21)
         }
         else {
             @Suppress("DEPRECATION")
-            bluetoothAdapter.stopLeScan(scanCallbackApi18)
+            bluetoothAdapter?.stopLeScan(scanCallbackApi18)
         }
         shouldStartDiscoveryWhenPermissionsGranted = false
-        println("Nuimo discovery stopped")
     }
 
     /**
