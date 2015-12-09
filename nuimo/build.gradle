@@ -38,3 +38,31 @@ android {
         androidTest.java.srcDirs += 'src/androidTest/kotlin'
     }
 }
+
+/**
+ *  Upload to bintray.
+ *
+ *  Run with ./gradlew clean build bintrayUpload -PbintrayUser=<Bintray Username> -PbintrayKey=<Bintray API Key> -PdryRun=false -x nuimo:mavenAndroidJavadocs
+ *
+ *  TODO: Javadocs can't be generated yet due to javadoc complaining about .kt files.
+ */
+
+apply plugin: 'com.novoda.bintray-release'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.novoda:bintray-release:0.3.4'
+    }
+}
+
+publish {
+    userOrg = 'larsblumberg'
+    groupId = 'com.senic'
+    artifactId = 'nuimo-android'
+    publishVersion = android.defaultConfig.versionName
+    desc = 'The Nuimo controller is an intuitive controller for your computer and connected smart devices. The Nuimo Android SDK helps you to easily integrate your Android apps with Nuimo controllers.'
+    website = 'https://github.com/getsenic/nuimo-android'
+}
