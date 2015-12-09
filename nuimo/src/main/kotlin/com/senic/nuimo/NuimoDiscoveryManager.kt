@@ -8,6 +8,7 @@
 package com.senic.nuimo
 
 import android.Manifest
+import android.annotation.TargetApi
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -152,6 +153,7 @@ class NuimoDiscoveryManager(context: Context) {
         override fun onLeScan(device: BluetoothDevice, rssi: Int, scanRecord: ByteArray?) = onDeviceFound(device)
     }
 
+    @TargetApi(21)
     private inner class ScanCallbackApi21 : android.bluetooth.le.ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) = onDeviceFound(result.device)
         override fun onScanFailed(errorCode: Int) { /* TODO: Notify listeners */ }
