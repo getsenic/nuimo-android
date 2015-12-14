@@ -39,12 +39,13 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 
     fun testNuimoControllerShouldSendLedMatrix() {
+        val displayInterval = 2.0
         connectServices { nuimoController, completed ->
             nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
-                // Complete only after 2sec as otherwise the LED matrix disappears immediately as completed() disconnects from the device
-                override fun onLedMatrixWrite() { Handler(Looper.getMainLooper()).postDelayed({ completed() }, 2000) }
+                // Complete only after display interval as otherwise the LED matrix disappears immediately as completed() disconnects from the device
+                override fun onLedMatrixWrite() { Handler(Looper.getMainLooper()).postDelayed({ completed() }, ((displayInterval + 1.0) * 1000.0).toLong()) }
             })
-            nuimoController.displayLedMatrix(NuimoLedMatrix(NuimoLedMatrix.animatableMatrixString()))
+            nuimoController.displayLedMatrix(NuimoLedMatrix(NuimoLedMatrix.animatableMatrixString()), displayInterval)
         }
     }
 

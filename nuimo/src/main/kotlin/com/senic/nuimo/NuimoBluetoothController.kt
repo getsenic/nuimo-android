@@ -153,12 +153,12 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     private var writeQueue = writeQueue
     private var firmwareVersion = firmwareVersion
     private var currentMatrix: NuimoLedMatrix? = null
-    private var currentMatrixDisplayIntervalNanos = 0L
+    private var currentMatrixDisplayIntervalSecs = 0.0
     private var writeMatrixOnWriteResponseReceived = false
 
     fun write(matrix: NuimoLedMatrix, displayInterval: Double) {
         currentMatrix = matrix
-        currentMatrixDisplayIntervalNanos = (displayInterval * 1000000000.0).toLong()
+        currentMatrixDisplayIntervalSecs = displayInterval
 
         when (writeQueue.isIdle) {
             true  -> writeNow()
@@ -170,7 +170,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         var gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes()
         //TODO: Remove test for firmware version when we use latest version on every Nuimo
         if (firmwareVersion >= 0.1) {
-            gattBytes += byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalNanos / 100.0, 0.0), 255.0).toByte())
+            gattBytes += byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
         }
         //TODO: Synchronize access to matrixCharacteristic, writeQueue executes lambda on different thread
         writeQueue.push {
