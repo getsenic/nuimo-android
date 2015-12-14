@@ -32,6 +32,7 @@ class NuimoDiscoveryManager(context: Context) {
     private val scanCallbackApi21: ScanCallbackApi21 by lazy { ScanCallbackApi21() }
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
     private var shouldStartDiscoveryWhenPermissionsGranted = false
+    private val discoveredControllers = ArrayList<NuimoController>()
 
     fun addDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
         discoveryListeners.add(discoveryListener)
@@ -46,6 +47,8 @@ class NuimoDiscoveryManager(context: Context) {
         if (!checkPermissions(context as? Activity)) { return false }
         //TODO: Start discovery automatically when bluetooth is turned on later (unless stopDiscovery was called)
         if (!checkBluetoothEnabled()) { return false }
+
+        discoveredControllers.clear()
 
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
@@ -141,9 +144,14 @@ class NuimoDiscoveryManager(context: Context) {
     fun checkLocationServiceEnabled() = (context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager)?.isProviderEnabled(LocationManager.GPS_PROVIDER) ?: false
 
     private fun onDeviceFound(device: BluetoothDevice) {
-        if (device.name != "Nuimo") { return }
-        println("Device found " + device.address + ", " + device.name)
-        discoveryListeners.forEach { it.onDiscoverNuimoController(NuimoBluetoothController(device, context)) }
+        when {
+            device.name != "Nuimo"                                     -> return
+            discoveredControllers.any { it.address == device.address } -> return
+        }
+        with(NuimoBluetoothController(device, context)) {
+            discoveredControllers.add(this)
+            discoveryListeners.forEach { it.onDiscoverNuimoController(this) }
+        }
     }
 
     private inner class ScanCallbackApi18 : BluetoothAdapter.LeScanCallback {

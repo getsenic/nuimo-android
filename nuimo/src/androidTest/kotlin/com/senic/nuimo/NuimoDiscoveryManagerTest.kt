@@ -8,7 +8,9 @@
 package com.senic.nuimo
 
 import android.test.AndroidTestCase
+import java.util.*
 import java.util.concurrent.Semaphore
+import kotlin.concurrent.schedule
 
 //TODO: Try spek test framework: http://jetbrains.github.io/spek/
 //TODO: Add timeouts to each test
@@ -26,6 +28,34 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
             assertEquals(NuimoBluetoothController::class.java, nuimoController.javaClass)
             completed()
         }
+    }
+
+    fun testDiscoveryManagerShouldSendOnlyOneDiscoveryEventForTheSameDevice() {
+        val waitLock = Semaphore(0)
+        val timer = Timer()
+        var receivedDuplicateDiscoveryEvent = false
+        var discoveredDevices = HashSet<String>()
+        discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
+            override fun onDiscoverNuimoController(nuimoController: NuimoController) {
+                println("Device found ${nuimoController.address}")
+                if (discoveredDevices.contains(nuimoController.address)) {
+                    receivedDuplicateDiscoveryEvent = true
+                    timer.cancel()
+                    waitLock.release()
+                }
+                else {
+                    discoveredDevices.add(nuimoController.address)
+                }
+            }
+        })
+        discovery.startDiscovery()
+
+        // Stop discovery after timeout
+        timer.schedule(10000) { waitLock.release() }
+        waitLock.acquire()
+        discovery.stopDiscovery()
+
+        assertFalse("Discovery manager must report a device discovery for each device only once", receivedDuplicateDiscoveryEvent)
     }
 
     /*
