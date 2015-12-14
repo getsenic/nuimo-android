@@ -49,7 +49,7 @@ class NuimoDiscoveryManager(context: Context) {
 
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            if (!checkLocationServiceEnabled()) { return false }
+            if ((android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) && !checkLocationServiceEnabled()) { return false }
             bluetoothAdapter?.bluetoothLeScanner?.startScan(scanCallbackApi21)
         }
         else {
