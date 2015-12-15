@@ -58,7 +58,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
             val nextFrame = {
                 nuimoController.displayLedMatrix(NuimoLedMatrix(NuimoLedMatrix
                     .animatableMatrixString()
-                    .toCharList()
+                    .toList()
                     .map { if (it == 'o' && Math.random() > 0.8) " " else it.toString() }
                     .reduce { s, c -> s + c }))
             }
