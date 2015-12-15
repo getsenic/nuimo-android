@@ -88,7 +88,7 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
      */
 
     // Discovers a controller. Blocks until the "discovered" lambda calls the completed() method
-    protected fun discover(discovered: (discovery: NuimoDiscoveryManager, nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
+    protected fun discover(timeout: Double = 30.0, discovered: (discovery: NuimoDiscoveryManager, nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
         val waitLock = Semaphore(0)
         discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
             override fun onDiscoverNuimoController(nuimoController: NuimoController) {
@@ -100,7 +100,7 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
         })
         val started = discovery.startDiscovery()
         assertTrue("Device discovery must start", started)
-        //TODO: Add timeout
+        after(timeout) { waitLock.release() }
         waitLock.acquire()
         discovery.stopDiscovery()
     }
