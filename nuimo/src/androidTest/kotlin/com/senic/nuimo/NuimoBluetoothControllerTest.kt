@@ -44,7 +44,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 
     //TODO: Remove this test, the next one makes it obsolete. The x-mas animation is however very fancy. Put it somewhere else.
-    fun __testNuimoControllerShouldPlayLedMatrixAnimation() {
+    fun testNuimoControllerShouldPlayLedMatrixAnimation() {
         //TODO: Test if all frames are written within a certain time interval
         connect { nuimoController, completed ->
             val frameCount = 100
