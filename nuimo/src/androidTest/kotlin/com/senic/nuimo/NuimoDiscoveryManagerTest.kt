@@ -98,7 +98,8 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
                 discovered(discovery, nuimoController, { waitLock.release() })
             }
         })
-        assertTrue("Device discovery must start", discovery.startDiscovery())
+        val started = discovery.startDiscovery()
+        assertTrue("Device discovery must start", started)
         //TODO: Add timeout
         waitLock.acquire()
         discovery.stopDiscovery()
