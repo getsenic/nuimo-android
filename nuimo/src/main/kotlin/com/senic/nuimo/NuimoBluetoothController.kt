@@ -104,6 +104,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
 
         override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
             if (!writeQueue.next()) {
+                // When the last characteristic descriptor has been written, then Nuimo is successfully connected
                 notifyListeners { it.onConnect() }
             }
         }

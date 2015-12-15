@@ -17,36 +17,43 @@ import kotlin.concurrent.schedule
 class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
 
     fun testNuimoControllerShouldConnect() {
-        connect { nuimoController, completed ->
+        connectAndWait(20.0) { nuimoController, completed ->
             nuimoController.disconnect()
             completed()
+        }.onTimeout {
+            fail("Nuimo controller should connect")
         }
     }
 
     fun testNuimoControllerShouldDisconnect() {
-        connect { nuimoController, completed ->
+        connectAndWait(20.0) { nuimoController, completed ->
             nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onDisconnect() = completed()
             })
             nuimoController.disconnect()
+        }.onTimeout {
+            fail("Nuimo controller should disconnect")
         }
     }
 
-    fun testNuimoControllerShouldSendLedMatrix() {
+    fun testNuimoControllerShouldReceiveLedMatrixWriteResponse() {
         val displayInterval = 2.0
-        connect { nuimoController, completed ->
+        connectAndWait(20.0) { nuimoController, completed ->
             nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
-                // Complete only after display interval as otherwise the LED matrix disappears immediately as completed() disconnects from the device
-                override fun onLedMatrixWrite() { Handler(Looper.getMainLooper()).postDelayed({ completed() }, ((displayInterval + 1.0) * 1000.0).toLong()) }
+                override fun onLedMatrixWrite() {
+                    // Complete only after display interval as otherwise the LED matrix disappears immediately as completed() disconnects from the device
+                    after(displayInterval + 1.0) { completed() }
+                }
             })
             nuimoController.displayLedMatrix(NuimoLedMatrix(NuimoLedMatrix.animatableMatrixString()), displayInterval)
+        }.onTimeout {
+            fail("Nuimo controller should get a LED matrix write response")
         }
     }
 
     //TODO: Remove this test, the next one makes it obsolete. The x-mas animation is however very fancy. Put it somewhere else.
     fun testNuimoControllerShouldPlayLedMatrixAnimation() {
-        //TODO: Test if all frames are written within a certain time interval
-        connect { nuimoController, completed ->
+        connectAndWait(30.0) { nuimoController, completed ->
             val frameCount = 100
             var frameIndex = 0
             val nextFrame = {
@@ -65,6 +72,8 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                 }
             })
             nextFrame()
+        }.onTimeout {
+            fail("Nuimo controller should play LED matrix animation within timeout")
         }
     }
 
@@ -78,7 +87,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         var actualAnimationDurationMillis = 0L
 
         val timer = Timer()
-        connect { nuimoController, completed ->
+        connectAndWait(expectedAnimationDurationMillis / 1000.0 + 30.0) { nuimoController, completed ->
             var frameIndex = 0
             // Send frames faster than the device can handle to force controller to drop frames during the frame animation
             val animationStartedNanos = System.nanoTime()
@@ -88,6 +97,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                 }
             })
             // Stop frame animation when expected animation duration is reached
+            //TODO: Use onTimeout() capability of connect() to implement fail on timeout
             timer.schedule(2 * maxWriteDurationForSingleFrameMillis, 200) {
                 if (System.nanoTime() - animationStartedNanos >= expectedAnimationDurationMillis * 1000000L) { completed() }
             }
@@ -108,8 +118,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 
     fun testNuimoControllerShouldReceiveButtonPressAndReleaseEvents() {
-        //TODO: Timeout
-        connect { nuimoController, completed ->
+        connectAndWait(30.0) { nuimoController, completed ->
             val UNPRESSED = 0
             val PRESSED = 1
             nuimoController.addControllerListener(object: LedMatrixGuidedNuimoControllerListener(nuimoController, UNPRESSED) {
@@ -122,15 +131,16 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                     }
                 }
             })
+        }.onTimeout {
+            fail("Nuimo controller should receive button press and release events")
         }
     }
 
     fun testNuimoControllerShouldReceiveRotationEvents() {
-        //TODO: Timeout
         val rotationTest = { swipeDirection: NuimoGesture, matrixString: String ->
             var accumulatedRotationValue = 0
             val maxRotationValue = 2000
-            gestureRepetitionTest(swipeDirection, matrixString, 18) { steps, rotationValue ->
+            gestureRepetitionTest(45.0, swipeDirection, matrixString, 18) { steps, rotationValue ->
                 accumulatedRotationValue += rotationValue ?: 0
                 println("accumulatedRotationValue: $accumulatedRotationValue")
                 (accumulatedRotationValue.toDouble() / maxRotationValue * 18).toInt()
@@ -145,7 +155,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         //TODO: Request swipe gesture in arbitrary order an let test fail if user performs the wrong swipe. This recognizes too sensitive devices.
         //TODO: Timeout
         val swipeTest = { swipeDirection: NuimoGesture, matrixString: String ->
-            gestureRepetitionTest(swipeDirection, matrixString, 9) { steps, eventValue -> steps + 1 }
+            gestureRepetitionTest(45.0, swipeDirection, matrixString, 9) { steps, eventValue -> steps + 1 }
         }
 
         swipeTest(NuimoGesture.SWIPE_LEFT, NuimoLedMatrix.swipeLeftMatrixString())
@@ -159,10 +169,9 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
      */
 
     // Discovers and connects a controller and then stops discovery. Blocks until the "discovered" lambda calls the completed() method. Then disconnects the controller.
-    protected fun connect(connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
-        //TODO: Add timeout
+    protected fun connectAndWait(timeout: Double, connected: (nuimoController: NuimoController, completed: () -> Unit) -> Unit): TimeoutResult {
         var controller: NuimoController? = null
-        discover { discovery, nuimoController, completed ->
+        val result = discoverAndWait(timeout) { discovery, nuimoController, completed ->
             nuimoController.defaultMatrixDisplayInterval = 20.0
             nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onConnect() = connected(nuimoController, completed)
@@ -172,11 +181,12 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
             controller = nuimoController
         }
         controller?.disconnect()
+        return result
     }
 
     // Connects a controller and expects a given number of gesture event repetitions
-    fun gestureRepetitionTest(gesture: NuimoGesture, matrixString: String, maxRepetitions: Int, updateRepetitions: (repetitions: Int, eventValue: Int?) -> Int) {
-        connect { nuimoController, completed ->
+    fun gestureRepetitionTest(timeout: Double, gesture: NuimoGesture, matrixString: String, maxRepetitions: Int, updateRepetitions: (repetitions: Int, eventValue: Int?) -> Int) {
+        connectAndWait(timeout) { nuimoController, completed ->
             nuimoController.addControllerListener(object: LedMatrixGuidedNuimoControllerListener(nuimoController, 0) {
                 override val matrixForState: Map<Int, NuimoLedMatrix>
                     get() = {
@@ -191,6 +201,8 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                     if (state == maxRepetitions) completed()
                 }
             })
+        }.onTimeout {
+            fail("Gesture test must complete within timeout")
         }
     }
 }

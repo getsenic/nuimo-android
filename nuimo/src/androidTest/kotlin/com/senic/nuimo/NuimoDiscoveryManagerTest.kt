@@ -14,56 +14,59 @@ import kotlin.concurrent.schedule
 
 //TODO: Try spek test framework: http://jetbrains.github.io/spek/
 open class NuimoDiscoveryManagerTest: AndroidTestCase() {
-    val discovery: NuimoDiscoveryManager by lazy { NuimoDiscoveryManager(context) }
-
     override fun setUp() {
         super.setUp()
+        val discovery: NuimoDiscoveryManager = NuimoDiscoveryManager(context)
         assertTrue("Bluetooth must be present and enabled", discovery.checkBluetoothEnabled())
         assertTrue("Permissions must be granted", discovery.checkPermissions(null))
     }
 
     fun testDiscoveryManagerShouldDiscoverOneBluetoothController() {
-        discover { discovery, nuimoController, completed ->
+        discoverAndWait(20.0) { discovery, nuimoController, completed ->
             assertEquals(NuimoBluetoothController::class.java, nuimoController.javaClass)
             completed()
+        }.onTimeout {
+            fail("Discovery manager must discover a nuimo controller")
         }
     }
 
     fun testDiscoveryManagerShouldSendOnlyOneDiscoveryEventForTheSameDevice() {
-        var receivedDuplicateDiscoveryEvent = false
         var discoveredDevices = HashSet<String>()
-        discover { discoveryManager, nuimoController, completed ->
+        discoverAndWait(60.0) { discoveryManager, nuimoController, completed ->
             if (discoveredDevices.contains(nuimoController.address)) {
-                receivedDuplicateDiscoveryEvent = true
                 completed()
             }
             else {
                 discoveredDevices.add(nuimoController.address)
             }
+        }.onComplete {
+            fail("Discovery manager must report a device discovery for each device only once")
         }
-        assertFalse("Discovery manager must report a device discovery for each device only once", receivedDuplicateDiscoveryEvent)
     }
 
     fun testDiscoveryShouldStopEmittingDiscoveryEventsWhenStopped() {
-        var devicesFound = 0
-        discover(20.0) { discovery, nuimoController, completed ->
-            devicesFound += 1
-            if (devicesFound == 2) { completed() }
+        var deviceFound = false
+        //TODO: This test fails when there are two Nuimos nearby
+        discoverAndWait(30.0) { discovery, nuimoController, completed ->
+            if (deviceFound) { completed() }
+            deviceFound = true
             discovery.stopDiscovery()
+        }.onComplete {
+            fail("Discovery should stop discovering devices when stopped")
         }
-        assertTrue("Discovery should not discover devices when stopped", devicesFound == 1)
     }
 
     fun testDiscoveryShouldContinueDiscoveringDevicesWhenRestarted() {
-        //TODO: This test needs to Nuimos being discoverable. Write another test that asserts that the discovery can actually discover two devices.
-        var firstDiscoveredAddress: String? = null
-        discover { discoveryManager, nuimoController, completed ->
-            when (firstDiscoveredAddress) {
-                null                    -> firstDiscoveredAddress = nuimoController.address
-                nuimoController.address -> completed()
-            }
+        var isFirstDiscovery = true
+        discoverAndWait(30.0) { discovery, nuimoController, completed ->
             discovery.stopDiscovery()
-            discovery.startDiscovery()
+            when (isFirstDiscovery) {
+                true  -> discovery.startDiscovery() // Restarts discovery
+                false -> completed()
+            }
+            isFirstDiscovery = false
+        }.onTimeout {
+            fail("Discovery should continue discovering devices when restarted")
         }
     }
 
@@ -71,22 +74,32 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
      * Private test helper methods
      */
 
-    // Discovers a controller. Blocks until the "discovered" lambda calls the completed() method
-    protected fun discover(timeout: Double = 30.0, discovered: (discovery: NuimoDiscoveryManager, nuimoController: NuimoController, completed: () -> Unit) -> Unit) {
+    // Discovers a controller. Blocks until the "discovered" lambda calls the completed() method or until the timeout has reached
+    protected fun discoverAndWait(timeout: Double, discovered: (discovery: NuimoDiscoveryManager, nuimoController: NuimoController, completed: () -> Unit) -> Unit): TimeoutResult {
         val waitLock = Semaphore(0)
+        var timedOut = false
+        val timeoutTimer = after(timeout) {
+            timedOut = true
+            waitLock.release()
+        }
+        val discovery: NuimoDiscoveryManager = NuimoDiscoveryManager(context)
         discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
             override fun onDiscoverNuimoController(nuimoController: NuimoController) {
                 println("Bluetooth device found " + nuimoController.address)
                 //if (nuimoController.address != "CC:8A:20:D9:E7:3F") { return } //Klapperkiste
-                if (nuimoController.address != "F1:22:76:AC:53:58") { return } // Core_04_01_B_DEV
-                discovered(discovery, nuimoController, { waitLock.release() })
+                if (nuimoController.address != "F1:22:76:AC:53:58") { return } // Oscar Wilde
+                //if (nuimoController.address != "DE:55:B1:B7:5E:FC") { return } // Chicken Cracker
+                discovered(discovery, nuimoController, {
+                    timeoutTimer.cancel()
+                    waitLock.release()
+                })
             }
         })
         val started = discovery.startDiscovery()
         assertTrue("Device discovery must start", started)
-        after(timeout) { waitLock.release() }
         waitLock.acquire()
         discovery.stopDiscovery()
+        return TimeoutResult(timedOut)
     }
 }
 
@@ -95,5 +108,14 @@ fun after(delay: Double, block: () -> Unit): Timer {
         schedule((delay * 1000.0).toLong()) {
             block()
         }
+    }
+}
+
+class TimeoutResult(val timedOut: Boolean) {
+    fun onTimeout(block: () -> Unit) {
+        if (timedOut) { block() }
+    }
+    fun onComplete(block: () -> Unit) {
+        if (!timedOut) { block() }
     }
 }
