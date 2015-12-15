@@ -13,7 +13,6 @@ import java.util.concurrent.Semaphore
 import kotlin.concurrent.schedule
 
 //TODO: Try spek test framework: http://jetbrains.github.io/spek/
-//TODO: Add timeouts to each test
 open class NuimoDiscoveryManagerTest: AndroidTestCase() {
     val discovery: NuimoDiscoveryManager by lazy { NuimoDiscoveryManager(context) }
 
@@ -31,47 +30,32 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
     }
 
     fun testDiscoveryManagerShouldSendOnlyOneDiscoveryEventForTheSameDevice() {
-        val waitLock = Semaphore(0)
-        val timer = Timer()
         var receivedDuplicateDiscoveryEvent = false
         var discoveredDevices = HashSet<String>()
-        //TODO: Use discover() method instead
-        discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
-            override fun onDiscoverNuimoController(nuimoController: NuimoController) {
-                println("Device found ${nuimoController.address}")
-                if (discoveredDevices.contains(nuimoController.address)) {
-                    receivedDuplicateDiscoveryEvent = true
-                    timer.cancel()
-                    waitLock.release()
-                }
-                else {
-                    discoveredDevices.add(nuimoController.address)
-                }
+        discover { discoveryManager, nuimoController, completed ->
+            if (discoveredDevices.contains(nuimoController.address)) {
+                receivedDuplicateDiscoveryEvent = true
+                completed()
             }
-        })
-        discovery.startDiscovery()
-
-        // Stop discovery after timeout
-        timer.schedule(10000) { waitLock.release() }
-        waitLock.acquire()
-        discovery.stopDiscovery()
-
+            else {
+                discoveredDevices.add(nuimoController.address)
+            }
+        }
         assertFalse("Discovery manager must report a device discovery for each device only once", receivedDuplicateDiscoveryEvent)
     }
 
     fun testDiscoveryShouldStopEmittingDiscoveryEventsWhenStopped() {
-        var deviceFound = false
-        discover { discovery, nuimoController, completed ->
+        var devicesFound = 0
+        discover(20.0) { discovery, nuimoController, completed ->
+            devicesFound += 1
+            if (devicesFound == 2) { completed() }
             discovery.stopDiscovery()
-            when (deviceFound) {
-                true  -> fail("Discover should not discover devices when stopped")
-                false -> after(20.0) { completed() }
-            }
-            deviceFound = true
         }
+        assertTrue("Discovery should not discover devices when stopped", devicesFound == 1)
     }
 
     fun testDiscoveryShouldContinueDiscoveringDevicesWhenRestarted() {
+        //TODO: This test needs to Nuimos being discoverable. Write another test that asserts that the discovery can actually discover two devices.
         var firstDiscoveredAddress: String? = null
         discover { discoveryManager, nuimoController, completed ->
             when (firstDiscoveredAddress) {
