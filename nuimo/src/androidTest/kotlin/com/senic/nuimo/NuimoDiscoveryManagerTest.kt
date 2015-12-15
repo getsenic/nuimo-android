@@ -35,6 +35,7 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
         val timer = Timer()
         var receivedDuplicateDiscoveryEvent = false
         var discoveredDevices = HashSet<String>()
+        //TODO: Use discover() method instead
         discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
             override fun onDiscoverNuimoController(nuimoController: NuimoController) {
                 println("Device found ${nuimoController.address}")
@@ -56,6 +57,18 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
         discovery.stopDiscovery()
 
         assertFalse("Discovery manager must report a device discovery for each device only once", receivedDuplicateDiscoveryEvent)
+    }
+
+    fun testDiscoveryShouldStopEmittingDiscoveryEventsWhenStopped() {
+        var deviceFound = false
+        discover { discovery, nuimoController, completed ->
+            discovery.stopDiscovery()
+            when (deviceFound) {
+                true  -> fail("Discover should not discover devices when stopped")
+                false -> after(20.0) { completed() }
+            }
+            deviceFound = true
+        }
     }
 
     /*
