@@ -71,6 +71,18 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
         }
     }
 
+    fun testDiscoveryShouldContinueDiscoveringDevicesWhenRestarted() {
+        var firstDiscoveredAddress: String? = null
+        discover { discoveryManager, nuimoController, completed ->
+            when (firstDiscoveredAddress) {
+                null                    -> firstDiscoveredAddress = nuimoController.address
+                nuimoController.address -> completed()
+            }
+            discovery.stopDiscovery()
+            discovery.startDiscovery()
+        }
+    }
+
     /*
      * Private test helper methods
      */
@@ -90,5 +102,13 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
         //TODO: Add timeout
         waitLock.acquire()
         discovery.stopDiscovery()
+    }
+}
+
+fun after(delay: Double, block: () -> Unit): Timer {
+    return Timer().apply {
+        schedule((delay * 1000.0).toLong()) {
+            block()
+        }
     }
 }
