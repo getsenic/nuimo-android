@@ -60,7 +60,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                     mainHandler.post {
                         gatt.discoverServices()
                     }
-                    listeners.forEach { it.onConnect() }
+                    //TODO: onDescriptorWrite() will fire onConnect(). In case it doesn't happen we need a timeout here that then calls onConnectFailure().
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     gatt.close()
@@ -104,7 +104,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
 
         override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
             if (!writeQueue.next()) {
-                listeners.forEach { it.onReady() }
+                listeners.forEach { it.onConnect() }
             }
         }
     }
