@@ -65,7 +65,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     gatt.close()
                     this@NuimoBluetoothController.gatt = null
-                    listeners.forEach { it.onDisconnect() }
+                    notifyListeners { it.onDisconnect() }
                 }
             }
         }
@@ -85,7 +85,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 LED_MATRIX_CHARACTERISTIC_UUID -> {
                     matrixWriter?.onWrite()
                     if (status == BluetoothGatt.GATT_SUCCESS) {
-                        listeners.forEach { it.onLedMatrixWrite() }
+                        notifyListeners { it.onLedMatrixWrite() }
                     }
                 }
             }
@@ -96,7 +96,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 else -> {
                     val event = characteristic.toNuimoGestureEvent(firmwareVersion)
                     if (event != null) {
-                        listeners.forEach { it.onGestureEvent(event) }
+                        notifyListeners { it.onGestureEvent(event) }
                     }
                 }
             }
@@ -104,7 +104,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
 
         override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
             if (!writeQueue.next()) {
-                listeners.forEach { it.onConnect() }
+                notifyListeners { it.onConnect() }
             }
         }
     }

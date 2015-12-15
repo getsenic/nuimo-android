@@ -13,7 +13,7 @@ abstract class NuimoController(address: String) {
     val address: String = address
     var defaultMatrixDisplayInterval = 2.0
 
-    protected val listeners = ArrayList<NuimoControllerListener>()
+    private val listeners = ArrayList<NuimoControllerListener>()
 
     abstract fun connect()
 
@@ -27,6 +27,15 @@ abstract class NuimoController(address: String) {
 
     fun removeControllerListener(controllerListener: NuimoControllerListener) {
         listeners.remove(controllerListener)
+    }
+
+    /**
+     * Calls "event" lambda on every listener. It does so by copying the list of listeners before to
+     * avoid ConcurrentModificationExceptions that occur if the actual listener tries to modify the
+     * listeners.
+     */
+    protected fun notifyListeners(event: (listener: NuimoControllerListener) -> Unit) {
+        ArrayList(listeners).forEach { event(it) }
     }
 }
 
