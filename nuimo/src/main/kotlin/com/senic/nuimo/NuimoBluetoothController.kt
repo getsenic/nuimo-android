@@ -28,7 +28,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private var matrixWriter: LedMatrixWriter? = null
 
     override fun connect() {
-        //TODO: What if controller is already connected?
+        if (gatt != null) { return }
+
         mainHandler.post {
             //TODO: Figure out if and when to use autoConnect=true
             gatt = device.connectGatt(context, false, GattCallback())
@@ -36,10 +37,16 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     }
 
     override fun disconnect() {
+        if (gatt == null) { return }
+
+        val gattToClose = gatt
+        gatt = null
         matrixWriter = null
+
         mainHandler.post {
-            gatt?.disconnect()
-            //TODO: What if onConnectionStateChange with STATE_DISCONNECTED is not called? We definitely need to call gatt.close() at some point!
+            gattToClose.disconnect()
+            gattToClose.close()
+            notifyListeners { it.onDisconnect() }
         }
     }
 
@@ -63,9 +70,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                     //TODO: onDescriptorWrite() will fire onConnect(). In case it doesn't happen we need a timeout here that then calls onConnectFailure().
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
-                    gatt.close()
-                    this@NuimoBluetoothController.gatt = null
-                    notifyListeners { it.onDisconnect() }
+                    disconnect()
                 }
             }
         }
