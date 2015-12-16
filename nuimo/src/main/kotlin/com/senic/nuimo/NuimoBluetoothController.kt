@@ -14,7 +14,6 @@ import android.os.Looper
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
-//TODO: This class is not yet thread-safe. writeQueue, listeners, matrixCharacteristic are being accessed from different threads.
 class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
     //TODO: Make this val and retrieve from the device itself
     var firmwareVersion = 0.1
@@ -178,7 +177,6 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         if (firmwareVersion >= 0.1) {
             gattBytes += byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
         }
-        //TODO: Synchronize access to matrixCharacteristic, writeQueue executes lambda on different thread
         writeQueue.push {
             matrixCharacteristic.setValue(gattBytes)
             gatt.writeCharacteristic(matrixCharacteristic)
@@ -241,7 +239,6 @@ fun NuimoLedMatrix.gattBytes(): ByteArray {
             .toByteArray()
 }
 
-//TODO: Convert into generic function
 private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
     var chunks = java.util.ArrayList<List<Boolean>>(size / n + 1)
     var chunk = ArrayList<Boolean>(n)
@@ -330,6 +327,6 @@ private fun BluetoothGatt.setCharacteristicNotification2(characteristic: Bluetoo
     // http://stackoverflow.com/questions/17910322/android-ble-api-gatt-notification-not-received
     val descriptor = characteristic.getDescriptor(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID);
     descriptor.setValue(if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
-    //TODO: I observed cases where writeDescripter wasn't followed up by a onDescripterWrite notification -> We need a timeout here and error handling.
+    //TODO: I observed cases where writeDescriptor wasn't followed up by a onDescriptorWrite notification -> We need a timeout here and error handling.
     return writeDescriptor(descriptor);
 }
