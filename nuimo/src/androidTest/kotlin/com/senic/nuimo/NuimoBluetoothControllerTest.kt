@@ -59,7 +59,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                     .animatableMatrixString()
                     .toList()
                     .map { if (it == 'o' && Math.random() > 0.8) " " else it.toString() }
-                    .reduce { s, c -> s + c }))
+                    .reduce { s, c -> s + c }), 20.0)
             }
             nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onLedMatrixWrite() {
