@@ -15,9 +15,6 @@ import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
-    //TODO: Make this val and retrieve from the device itself
-    var firmwareVersion = 0.1
-
     private val device = bluetoothDevice
     private val context = context
     private var gatt: BluetoothGatt? = null
@@ -77,7 +74,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             gatt.services?.flatMap { it.characteristics }?.forEach {
                 if (LED_MATRIX_CHARACTERISTIC_UUID == it.uuid) {
-                    matrixWriter = LedMatrixWriter(gatt, it, writeQueue, firmwareVersion)
+                    matrixWriter = LedMatrixWriter(gatt, it, writeQueue)
                 } else if (CHARACTERISTIC_NOTIFICATION_UUIDS.contains(it.uuid)) {
                     writeQueue.push { gatt.setCharacteristicNotification2(it, true) }
                 }
@@ -98,7 +95,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             when (characteristic.uuid) {
                 else -> {
-                    val event = characteristic.toNuimoGestureEvent(firmwareVersion)
+                    val event = characteristic.toNuimoGestureEvent()
                     if (event != null) {
                         notifyListeners { it.onGestureEvent(event) }
                     }
@@ -152,11 +149,10 @@ private class WriteQueue {
  * Send LED matrices to the controller. When the writer receives write commands faster than the controller can actually handle
  * (thus write commands come in before write responses are received), it will send only the matrix of the very last write command.
  */
-private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: BluetoothGattCharacteristic, writeQueue: WriteQueue, firmwareVersion: Double) {
+private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: BluetoothGattCharacteristic, writeQueue: WriteQueue) {
     private var gatt = gatt
     private var matrixCharacteristic = matrixCharacteristic
     private var writeQueue = writeQueue
-    private var firmwareVersion = firmwareVersion
     private var currentMatrix: NuimoLedMatrix? = null
     private var currentMatrixDisplayIntervalSecs = 0.0
     private var writeMatrixOnWriteResponseReceived = false
@@ -172,11 +168,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     }
 
     private fun writeNow() {
-        var gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes()
-        //TODO: Remove test for firmware version when we use latest version on every Nuimo
-        if (firmwareVersion >= 0.1) {
-            gattBytes += byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
-        }
+        val gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes() + byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
         writeQueue.push {
             matrixCharacteristic.setValue(gattBytes)
             gatt.writeCharacteristic(matrixCharacteristic)
@@ -255,11 +247,10 @@ private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
     return chunks
 }
 
-private fun BluetoothGattCharacteristic.toNuimoGestureEvent(firmwareVersion: Double): NuimoGestureEvent? {
+private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent? {
     return when (uuid) {
         SENSOR_BUTTON_CHARACTERISTIC_UUID -> {
             var value = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
-            if (firmwareVersion < 0.1) { value = 1 - value /* Press and release swapped */ }
             return NuimoGestureEvent(if (value == 1) NuimoGesture.BUTTON_PRESS else NuimoGesture.BUTTON_RELEASE, value)
         }
         SENSOR_ROTATION_CHARACTERISTIC_UUID -> {
