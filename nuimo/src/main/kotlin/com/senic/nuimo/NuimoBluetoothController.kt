@@ -258,24 +258,36 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
             return NuimoGestureEvent(if (value >= 0) NuimoGesture.ROTATE_RIGHT else NuimoGesture.ROTATE_LEFT, Math.abs(value))
         }
         SENSOR_TOUCH_CHARACTERISTIC_UUID -> {
-            val button = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0) ?: 0
-            val event = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 2) ?: 0
-            for (i in 0..7) {
-                if (1.shl(i).and(button) == 0) { continue }
-                val touchDownGesture = GATT_TOUCH_DOWN_GESTURES[i / 2]
-                val eventGesture =
-                    when (event) {
-                        1    -> touchDownGesture
-                        2    -> touchDownGesture.touchReleaseGesture()
-                        3    -> null //TODO: Do we need to handle double touch gestures here as well?
-                        4    -> touchDownGesture.swipeGesture()
-                        else -> null
-                    }
-                if (eventGesture != null) {
-                    return NuimoGestureEvent(eventGesture, i)
-                }
+            if (value.size == 1) {
+                val gesture = hashMapOf(
+                        0 to NuimoGesture.SWIPE_LEFT,
+                        1 to NuimoGesture.SWIPE_RIGHT,
+                        2 to NuimoGesture.SWIPE_UP,
+                        3 to NuimoGesture.SWIPE_DOWN
+                    )[getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)]
+                return if (gesture != null) NuimoGestureEvent(gesture, 0) else null
             }
-            return null
+            else {
+                //TODO: Remove legacy code when we have no Nuimos with old firmware any more
+                val button = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0) ?: 0
+                val event = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 2) ?: 0
+                for (i in 0..7) {
+                    if (1.shl(i).and(button) == 0) { continue }
+                    val touchDownGesture = GATT_TOUCH_DOWN_GESTURES[i / 2]
+                    val eventGesture =
+                            when (event) {
+                                1 -> touchDownGesture
+                                2 -> touchDownGesture.touchReleaseGesture()
+                                3 -> null //TODO: Do we need to handle double touch gestures here as well?
+                                4 -> touchDownGesture.swipeGesture()
+                                else -> null
+                            }
+                    if (eventGesture != null) {
+                        return NuimoGestureEvent(eventGesture, i)
+                    }
+                }
+                return null
+            }
         }
         else -> null
     }
