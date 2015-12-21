@@ -43,7 +43,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
                     after(displayInterval + 1.0) { completed() }
                 }
             })
-            nuimoController.displayLedMatrix(NuimoLedMatrix(NuimoLedMatrix.animatableMatrixString()), displayInterval)
+            nuimoController.displayLedMatrix(NuimoLedMatrix("*".repeat(81)), displayInterval)
         }.onTimeout {
             fail("Nuimo controller should get a LED matrix write response")
         }
@@ -137,7 +137,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     fun testNuimoControllerShouldReceiveRotationEvents() {
         val rotationTest = { swipeDirection: NuimoGesture, matrixString: String ->
             var accumulatedRotationValue = 0
-            val maxRotationValue = 2000
+            val maxRotationValue = 2666 /* 1 rotation */
             gestureRepetitionTest(45.0, swipeDirection, matrixString, 18) { steps, rotationValue ->
                 accumulatedRotationValue += rotationValue ?: 0
                 println("accumulatedRotationValue: $accumulatedRotationValue")
