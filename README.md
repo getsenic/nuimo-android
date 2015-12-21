@@ -12,7 +12,7 @@ Your Android project must target at least API level 18. Earlier Android versions
 
     dependencies {
         ...
-        compile "com.senic:nuimo-android:0.1.0"
+        compile "com.senic:nuimo-android:0.2.0"
         compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.0-beta-3595"
     }
 
