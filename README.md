@@ -64,9 +64,9 @@ public class MainActivity extends AppCompatActivity implements NuimoDiscoveryLis
 }
 ```
 
-##### A ready to checkout MacOS demo application
+##### A ready to checkout Android demo appl
 
-We've provided a ready to checkout application that demonstrates discovering, connecting and receiving events from your Nuimo controllers. It also demonstrates how display fancy icons on its LED matrix. Simply clone the [Nuimo Android demo repository](https://github.com/getsenic/nuimo-android-demo) and open it in Android Studio.
+We've provided a ready to checkout Android app that demonstrates discovering, connecting and receiving events from your Nuimo controllers. It also demonstrates how display fancy icons on its LED matrix. Simply clone the [Nuimo Android demo repository](https://github.com/getsenic/nuimo-android-demo) and open it in Android Studio.
 
 ## Advanced usage
 
