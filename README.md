@@ -10,11 +10,13 @@ Your Android project must target at least API level 18. Earlier Android versions
 
 [The Nuimo SDK library for Android is available via the jCenter repository](http://jcenter.bintray.com/com/senic/nuimo-android/). To include the Nuimo library in your Android app dependencies you need to add two dependency lines to your `build.gradle`:
 
-    dependencies {
-        ...
-        compile "com.senic:nuimo-android:0.2.0"
-        compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.0-beta-3595"
-    }
+```groovy
+dependencies {
+   ...
+   compile "com.senic:nuimo-android:0.2.0"
+   compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.0-beta-3595"
+}
+```
 
 If you're wondering why `kotlin-stdlib` is needed: The Nuimo library is written in the [Kotlin programming language](https://kotlinlang.org/) instead of Java. If you are already writing your Android apps in Kotlin then there's no need for this extra line.
 
