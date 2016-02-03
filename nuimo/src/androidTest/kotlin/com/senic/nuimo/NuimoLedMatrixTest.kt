@@ -8,7 +8,6 @@
 package com.senic.nuimo
 
 import android.test.AndroidTestCase
-import kotlin.test.assertNotEquals
 
 open class NuimoLedMatrixTest: AndroidTestCase() {
 

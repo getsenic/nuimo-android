@@ -19,6 +19,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private val context = context
     private var gatt: BluetoothGatt? = null
     // At least for some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
+    //TODO: According to another SO answer, we just need another thread. So don't use main thread! See http://stackoverflow.com/questions/17870189/android-4-3-bluetooth-low-energy-unstable
+    //TODO: Furthermore, the post says, it's only necessary for the connectGatt() method. Try it out!
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
     private var matrixWriter: LedMatrixWriter? = null
@@ -40,8 +42,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         matrixWriter = null
 
         mainHandler.post {
-            gattToClose.disconnect()
-            gattToClose.close()
+            gattToClose?.disconnect()
+            gattToClose?.close()
             notifyListeners { it.onDisconnect() }
         }
     }
