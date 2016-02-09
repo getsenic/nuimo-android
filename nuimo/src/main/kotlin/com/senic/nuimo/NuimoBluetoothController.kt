@@ -176,7 +176,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     private fun writeNow() {
         val gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes() + byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
         writeQueue.push {
-            matrixCharacteristic.setValue(gattBytes)
+            matrixCharacteristic.value = gattBytes
             gatt.writeCharacteristic(matrixCharacteristic)
         }
     }
