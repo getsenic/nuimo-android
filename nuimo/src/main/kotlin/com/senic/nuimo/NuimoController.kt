@@ -41,6 +41,7 @@ abstract class NuimoController(address: String) {
 
 interface NuimoControllerListener {
     fun onConnect() {}
+    fun onFailToConnect() {}
     fun onDisconnect() {}
     fun onLedMatrixWrite() {}
     fun onGestureEvent(event: NuimoGestureEvent) {}

@@ -11,12 +11,14 @@ import android.bluetooth.*
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
     private val device = bluetoothDevice
     private val context = context
+    private var gattConnected = false
     private var gatt: BluetoothGatt? = null
     // At least for some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
     //TODO: According to another SO answer, we just need another thread. So don't use main thread! See http://stackoverflow.com/questions/17870189/android-4-3-bluetooth-low-energy-unstable
@@ -28,6 +30,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     override fun connect() {
         if (gatt != null) { return }
 
+        reset()
+
         mainHandler.post {
             //TODO: Figure out if and when to use autoConnect=true
             gatt = device.connectGatt(context, false, GattCallback())
@@ -35,17 +39,32 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     }
 
     override fun disconnect() {
-        if (gatt == null) { return }
+        if (gatt == null) return
 
         val gattToClose = gatt
-        gatt = null
-        matrixWriter = null
-
         mainHandler.post {
             gattToClose?.disconnect()
             gattToClose?.close()
-            notifyListeners { it.onDisconnect() }
         }
+
+        when (gattConnected) {
+            true ->  notifyListeners { it.onDisconnect() }
+            false -> notifyListeners { it.onFailToConnect() }
+        }
+
+        reset()
+    }
+
+    private fun reset() {
+        gatt = null
+        gattConnected = false
+        writeQueue.clear()
+        matrixWriter = null
+    }
+
+    private fun discoverServices() {
+        mainHandler.post { gatt?.discoverServices() }
+        //TODO: Start timeout that disconnects if services are not discovered and descriptors are not written in time
     }
 
     override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double) {
@@ -54,22 +73,12 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
 
     private inner class GattCallback: BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            if (status != BluetoothGatt.GATT_SUCCESS) return
+            Log.i("Nuimo", "onConnectionStateChange $status, $newState")
 
-            writeQueue.clear()
-            matrixWriter = null
-
-            println("Connection state changed " + newState)
-            when (newState) {
-                BluetoothProfile.STATE_CONNECTED -> {
-                    mainHandler.post {
-                        gatt.discoverServices()
-                    }
-                    //TODO: onDescriptorWrite() will fire onConnect(). In case it doesn't happen we need a timeout here that then calls onConnectFailure().
-                }
-                BluetoothProfile.STATE_DISCONNECTED -> {
-                    disconnect()
-                }
+            when {
+                status   != BluetoothGatt.GATT_SUCCESS          -> disconnect() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
+                newState == BluetoothProfile.STATE_CONNECTED    -> discoverServices()
+                newState == BluetoothProfile.STATE_DISCONNECTED -> disconnect()
             }
         }
 
@@ -100,8 +109,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
-            if (!writeQueue.next()) {
+            if (!writeQueue.next() && !gattConnected) {
                 // When the last characteristic descriptor has been written, then Nuimo is successfully connected
+                gattConnected = true
                 notifyListeners { it.onConnect() }
             }
         }
