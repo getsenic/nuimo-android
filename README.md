@@ -13,7 +13,7 @@ Your Android project must target at least API level 18. Earlier Android versions
 ```groovy
 dependencies {
    ...
-   compile "com.senic:nuimo-android:0.2.1"
+   compile "com.senic:nuimo-android:0.3.0"
    compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.0-rc-1036"
 }
 ```
@@ -28,7 +28,7 @@ The Nuimo library makes it very easy to connect your Android apps with Nuimo con
 
 1. Add a `NuimoDiscoveryListener` to an instance of `NuimoDiscoveryManager` and call `startDiscovery()`. This will discover Nuimo controllers nearby.
 
-2. Receive discovered controllers by implementing the listener method `onDiscoverNuimoController`. Here you can 
+2. Receive discovered controllers by implementing the listener method `onDiscoverNuimoController`. Here you can
     1. Add an event listener to the discovered controller
     2. Initiate the Bluetooth connection to the discovered controller by calling `connect()`
 
