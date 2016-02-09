@@ -95,17 +95,11 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            when (characteristic.uuid) {
-                else -> {
-                    val event = characteristic.toNuimoGestureEvent()
-                    if (event != null) {
-                        notifyListeners { it.onGestureEvent(event) }
-                    }
-                }
-            }
+            val event = characteristic.toNuimoGestureEvent() ?: return
+            notifyListeners { it.onGestureEvent(event) }
         }
 
-        override fun onDescriptorWrite(gatt: BluetoothGatt?, descriptor: BluetoothGattDescriptor?, status: Int) {
+        override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
             if (!writeQueue.next()) {
                 // When the last characteristic descriptor has been written, then Nuimo is successfully connected
                 notifyListeners { it.onConnect() }
@@ -331,7 +325,7 @@ private fun BluetoothGatt.setCharacteristicNotification2(characteristic: Bluetoo
     setCharacteristicNotification(characteristic, enable)
     // http://stackoverflow.com/questions/17910322/android-ble-api-gatt-notification-not-received
     val descriptor = characteristic.getDescriptor(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID);
-    descriptor.setValue(if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+    descriptor.value = if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
     //TODO: I observed cases where writeDescriptor wasn't followed up by a onDescriptorWrite notification -> We need a timeout here and error handling.
     return writeDescriptor(descriptor);
 }
