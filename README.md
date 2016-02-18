@@ -1,3 +1,5 @@
+# Nuimo SDK for Android
+
 The Nuimo controller is an intuitive controller for your computer and connected smart devices. The Nuimo Android SDK helps you to easily integrate your Android apps with Nuimo controllers.
 
 ## Installation
