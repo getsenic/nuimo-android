@@ -29,5 +29,9 @@ enum class NuimoGesture {
     SWIPE_LEFT,
     SWIPE_RIGHT,
     SWIPE_UP,
-    SWIPE_DOWN
+    SWIPE_DOWN,
+    FLY_LEFT,
+    FLY_RIGHT,
+    FLY_BACKWARDS,
+    FLY_TOWARDS
 }

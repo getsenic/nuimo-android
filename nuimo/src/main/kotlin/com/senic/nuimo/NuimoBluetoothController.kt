@@ -215,7 +215,7 @@ val NUIMO_SERVICE_UUIDS = arrayOf(
 
 private val CHARACTERISTIC_NOTIFICATION_UUIDS = arrayOf(
         //BATTERY_CHARACTERISTIC_UUID,
-        //SENSOR_FLY_CHARACTERISTIC_UUID,
+        SENSOR_FLY_CHARACTERISTIC_UUID,
         SENSOR_TOUCH_CHARACTERISTIC_UUID,
         SENSOR_ROTATION_CHARACTERISTIC_UUID,
         SENSOR_BUTTON_CHARACTERISTIC_UUID
@@ -294,6 +294,17 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
                 }
                 return null
             }
+        }
+        SENSOR_FLY_CHARACTERISTIC_UUID -> {
+            if (value.size < 2) return null
+            val gesture = hashMapOf(
+                    0 to NuimoGesture.FLY_LEFT,
+                    1 to NuimoGesture.FLY_RIGHT,
+                    2 to NuimoGesture.FLY_BACKWARDS,
+                    3 to NuimoGesture.FLY_TOWARDS
+            )[getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)]
+            val speed = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 1)
+            return if (gesture != null) NuimoGestureEvent(gesture, speed) else null
         }
         else -> null
     }
