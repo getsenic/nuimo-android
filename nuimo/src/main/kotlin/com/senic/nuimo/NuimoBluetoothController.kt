@@ -20,18 +20,21 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private val context = context
     private var gattConnected = false
     private var gatt: BluetoothGatt? = null
+    private var gattToClose: BluetoothGatt? = null
     // At least for some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
     //TODO: According to another SO answer, we just need another thread. So don't use main thread! See http://stackoverflow.com/questions/17870189/android-4-3-bluetooth-low-energy-unstable
     //TODO: Furthermore, the post says, it's only necessary for the connectGatt() method. Try it out!
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
     private var matrixWriter: LedMatrixWriter? = null
+    private var markedForDisconnect = false
 
     override fun connect() {
         if (gatt != null) { return }
 
         reset()
 
+        markedForDisconnect = false
         connectionState = NuimoConnectionState.CONNECTING
 
         mainHandler.post {
@@ -41,20 +44,22 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     }
 
     override fun disconnect() {
+        markedForDisconnect = true
+        disconnectInternal()
+    }
+
+    private fun disconnectInternal() {
         if (gatt == null) return
 
         connectionState = NuimoConnectionState.DISCONNECTING
 
-        val gattToClose = gatt
+        gattToClose = gatt
         mainHandler.post {
             gattToClose?.disconnect()
-            gattToClose?.close()
-            connectionState = NuimoConnectionState.DISCONNECTED
         }
 
-        when (gattConnected) {
-            true ->  notifyListeners { it.onDisconnect() }
-            false -> notifyListeners { it.onFailToConnect() }
+        if (!gattConnected) {
+            notifyListeners { it.onFailToConnect() }
         }
 
         reset()
@@ -80,10 +85,22 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             Log.i("Nuimo", "onConnectionStateChange $status, $newState")
 
+            if (newState == BluetoothProfile.STATE_DISCONNECTED && markedForDisconnect) {
+                if (markedForDisconnect) {
+                    gattToClose?.close()
+                    connectionState = NuimoConnectionState.DISCONNECTED
+                    gattToClose = null
+                    notifyListeners { it.onDisconnect() }
+                }
+                else {
+                    disconnectInternal()
+                }
+            }
+
             when {
-                status   != BluetoothGatt.GATT_SUCCESS          -> disconnect() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
+                status   != BluetoothGatt.GATT_SUCCESS          -> disconnectInternal() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
                 newState == BluetoothProfile.STATE_CONNECTED    -> discoverServices()
-                newState == BluetoothProfile.STATE_DISCONNECTED -> disconnect()
+//                newState == BluetoothProfile.STATE_DISCONNECTED -> disconnectInternal()
             }
         }
 
