@@ -34,6 +34,60 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         }
     }
 
+    fun testNuimoControllerConnectionStateShouldBeDisconnectedWhenDiscovered() {
+        discoverAndWait(20.0, { nuimoDiscoveryManager, nuimoController, completed ->
+            assertTrue("Connection state should be disconnected after discovery", nuimoController.connectionState == NuimoConnectionState.DISCONNECTED)
+            completed()
+        }).onTimeout {
+            fail("Nuimo controller should be discovered")
+        }
+    }
+
+    fun testNuimoControllerConnectionStateShouldBeConnectingWhenConnectionStarted() {
+        discoverAndWait(20.0, { nuimoDiscoveryManager, nuimoController, completed ->
+            nuimoController.connect()
+            assertTrue("Connection state should be connecting after calling connect", nuimoController.connectionState == NuimoConnectionState.CONNECTING)
+            nuimoController.disconnect()
+            completed()
+        }).onTimeout {
+            fail("Nuimo controller should be discovered")
+        }
+    }
+
+    fun testNuimoControllerConnectionStateShouldBeConnectedAfterSuccessfulConnection() {
+        connectAndWait(20.0) { nuimoController, completed ->
+            assertTrue("Connection state should be connected after successful connection", nuimoController.connectionState == NuimoConnectionState.CONNECTED)
+            nuimoController.disconnect()
+            completed()
+        }.onTimeout {
+            fail("Nuimo controller should connect")
+        }
+    }
+
+    fun testNuimoControllerConnectionStateShouldBeDisconnectingAfterCallingDisconnect() {
+        connectAndWait(20.0) { nuimoController, completed ->
+            nuimoController.disconnect()
+            assertTrue("Connection state should be disconnecting after calling disconnect", nuimoController.connectionState == NuimoConnectionState.DISCONNECTING)
+            completed()
+        }.onTimeout {
+            fail("Nuimo controller should connect")
+        }
+    }
+
+    fun testNuimoControllerConnectionStateShouldBeDisconnectedAfterSuccessfulDisconnect() {
+        connectAndWait(20.0) { nuimoController, completed ->
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
+                override fun onDisconnect() {
+                    assertTrue("Connection state should be disconnected after successful disconnect", nuimoController.connectionState == NuimoConnectionState.DISCONNECTED)
+                    completed()
+                }
+            })
+            nuimoController.disconnect()
+        }.onTimeout {
+            fail("Nuimo controller should connect")
+        }
+    }
+
     fun testNuimoControllerShouldReceiveLedMatrixWriteResponse() {
         val displayInterval = 2.0
         connectAndWait(20.0) { nuimoController, completed ->
