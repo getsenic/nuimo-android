@@ -73,25 +73,26 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             Log.i("Nuimo", "onConnectionStateChange $status, $newState")
 
-            if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                gatt?.close()
-
-                val previousConnectionState = connectionState
-                connectionState = NuimoConnectionState.DISCONNECTED
-
-                if (previousConnectionState == NuimoConnectionState.CONNECTING) {
-                    notifyListeners { it.onFailToConnect() }
-                }
-                else if (previousConnectionState == NuimoConnectionState.DISCONNECTING ||
-                        previousConnectionState == NuimoConnectionState.CONNECTED) {
-                    notifyListeners { it.onDisconnect() }
-                }
-            }
-
             when {
-                status   != BluetoothGatt.GATT_SUCCESS          -> disconnect() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
-                newState == BluetoothProfile.STATE_CONNECTED    -> discoverServices()
-                newState == BluetoothProfile.STATE_DISCONNECTED -> disconnect()
+                newState == BluetoothProfile.STATE_DISCONNECTED -> {
+                    gatt.close()
+
+                    val previousConnectionState = connectionState
+                    connectionState = NuimoConnectionState.DISCONNECTED
+
+                    if (previousConnectionState == NuimoConnectionState.CONNECTING) {
+                        notifyListeners { it.onFailToConnect() }
+                    }
+                    else if (previousConnectionState == NuimoConnectionState.DISCONNECTING ||
+                            previousConnectionState == NuimoConnectionState.CONNECTED) {
+                        //TODO: in case of CONNECTED we might need to pass an error code
+                        notifyListeners { it.onDisconnect() }
+                    }
+
+                    disconnect()
+                }
+                status != BluetoothGatt.GATT_SUCCESS -> disconnect() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
+                newState == BluetoothProfile.STATE_CONNECTED -> discoverServices()
             }
         }
 
