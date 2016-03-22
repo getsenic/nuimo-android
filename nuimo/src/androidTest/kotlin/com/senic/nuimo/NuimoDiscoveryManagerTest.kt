@@ -87,8 +87,6 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
             override fun onDiscoverNuimoController(nuimoController: NuimoController) {
                 println("Bluetooth device found " + nuimoController.address)
                 //if (nuimoController.address != "CC:8A:20:D9:E7:3F") { return } //Klapperkiste
-                if (nuimoController.address != "F1:22:76:AC:53:58") { return } // Oscar Wilde
-                //if (nuimoController.address != "DE:55:B1:B7:5E:FC") { return } // Chicken Cracker
                 discovered(discovery, nuimoController, {
                     timeoutTimer.cancel()
                     waitLock.release()

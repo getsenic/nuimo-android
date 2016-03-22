@@ -32,6 +32,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
 
         reset()
 
+        connectionState = NuimoConnectionState.CONNECTING
+
         mainHandler.post {
             //TODO: Figure out if and when to use autoConnect=true
             gatt = device.connectGatt(context, false, GattCallback())
@@ -41,15 +43,11 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     override fun disconnect() {
         if (gatt == null) return
 
+        connectionState = NuimoConnectionState.DISCONNECTING
+
         val gattToClose = gatt
         mainHandler.post {
             gattToClose?.disconnect()
-            gattToClose?.close()
-        }
-
-        when (gattConnected) {
-            true ->  notifyListeners { it.onDisconnect() }
-            false -> notifyListeners { it.onFailToConnect() }
         }
 
         reset()
@@ -76,9 +74,25 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
             Log.i("Nuimo", "onConnectionStateChange $status, $newState")
 
             when {
-                status   != BluetoothGatt.GATT_SUCCESS          -> disconnect() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
-                newState == BluetoothProfile.STATE_CONNECTED    -> discoverServices()
-                newState == BluetoothProfile.STATE_DISCONNECTED -> disconnect()
+                newState == BluetoothProfile.STATE_DISCONNECTED -> {
+                    gatt.close()
+
+                    val previousConnectionState = connectionState
+                    connectionState = NuimoConnectionState.DISCONNECTED
+
+                    if (previousConnectionState == NuimoConnectionState.CONNECTING) {
+                        notifyListeners { it.onFailToConnect() }
+                    }
+                    else if (previousConnectionState == NuimoConnectionState.DISCONNECTING ||
+                            previousConnectionState == NuimoConnectionState.CONNECTED) {
+                        //TODO: in case of CONNECTED we might need to pass an error code
+                        notifyListeners { it.onDisconnect() }
+                    }
+
+                    disconnect()
+                }
+                status != BluetoothGatt.GATT_SUCCESS -> disconnect() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
+                newState == BluetoothProfile.STATE_CONNECTED -> discoverServices()
             }
         }
 
@@ -112,10 +126,18 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
             if (!writeQueue.next() && !gattConnected) {
                 // When the last characteristic descriptor has been written, then Nuimo is successfully connected
                 gattConnected = true
+                connectionState = NuimoConnectionState.CONNECTED
                 notifyListeners { it.onConnect() }
             }
         }
     }
+}
+
+/**
+ * Connection states for the Nuimo controller
+ */
+enum class NuimoConnectionState {
+    DISCONNECTED, CONNECTING, CONNECTED, DISCONNECTING
 }
 
 /**
