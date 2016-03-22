@@ -32,6 +32,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
 
         reset()
 
+        connectionState = NuimoConnectionState.CONNECTING
+
         mainHandler.post {
             //TODO: Figure out if and when to use autoConnect=true
             gatt = device.connectGatt(context, false, GattCallback())
@@ -41,10 +43,13 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     override fun disconnect() {
         if (gatt == null) return
 
+        connectionState = NuimoConnectionState.DISCONNECTING
+
         val gattToClose = gatt
         mainHandler.post {
             gattToClose?.disconnect()
             gattToClose?.close()
+            connectionState = NuimoConnectionState.DISCONNECTED
         }
 
         when (gattConnected) {
@@ -112,10 +117,18 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
             if (!writeQueue.next() && !gattConnected) {
                 // When the last characteristic descriptor has been written, then Nuimo is successfully connected
                 gattConnected = true
+                connectionState = NuimoConnectionState.CONNECTED
                 notifyListeners { it.onConnect() }
             }
         }
     }
+}
+
+/**
+ * Connection states for the Nuimo controller
+ */
+enum class NuimoConnectionState {
+    DISCONNECTED, CONNECTING, CONNECTED, DISCONNECTING
 }
 
 /**

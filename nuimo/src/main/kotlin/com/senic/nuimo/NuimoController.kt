@@ -13,6 +13,9 @@ abstract class NuimoController(address: String) {
     val address: String = address
     var defaultMatrixDisplayInterval = 2.0
 
+    var connectionState = NuimoConnectionState.DISCONNECTED
+        protected set
+
     private val listeners = ArrayList<NuimoControllerListener>()
 
     abstract fun connect()
