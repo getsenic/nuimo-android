@@ -76,15 +76,16 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
             if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 gatt?.close()
 
-                if (connectionState == NuimoConnectionState.CONNECTING) {
+                val previousConnectionState = connectionState
+                connectionState = NuimoConnectionState.DISCONNECTED
+
+                if (previousConnectionState == NuimoConnectionState.CONNECTING) {
                     notifyListeners { it.onFailToConnect() }
                 }
-                else if (connectionState == NuimoConnectionState.DISCONNECTING ||
-                        connectionState == NuimoConnectionState.CONNECTED) {
+                else if (previousConnectionState == NuimoConnectionState.DISCONNECTING ||
+                        previousConnectionState == NuimoConnectionState.CONNECTED) {
                     notifyListeners { it.onDisconnect() }
                 }
-
-                connectionState = NuimoConnectionState.DISCONNECTED
             }
 
             when {
