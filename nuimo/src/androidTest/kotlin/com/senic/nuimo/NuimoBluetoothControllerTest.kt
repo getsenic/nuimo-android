@@ -74,6 +74,20 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         }
     }
 
+    fun testNuimoControllerShouldNotifyBatteryPercentage() {
+        connectAndWait(60.0) { nuimoController, completed ->
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
+                override fun onBatteryPercentageChange(batteryPercentage: Int) {
+                    assertTrue("Battery percentage should be > -1", batteryPercentage > -1)
+                    nuimoController.disconnect()
+                    completed()
+                }
+            })
+        }.onTimeout {
+            fail("Nuimo controller should connect")
+        }
+    }
+
     fun testNuimoControllerConnectionStateShouldBeDisconnectedAfterSuccessfulDisconnect() {
         connectAndWait(20.0) { nuimoController, completed ->
             nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
