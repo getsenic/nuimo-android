@@ -63,7 +63,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private fun readBatteryPercentage() {
         val batteryCharacteristic = gatt?.getService(BATTERY_SERVICE_UUID)?.getCharacteristic(BATTERY_CHARACTERISTIC_UUID) ?: return
 
-        mainHandler.post { gatt?.readCharacteristic(batteryCharacteristic) }
+        writeQueue.push { gatt?.readCharacteristic(batteryCharacteristic) }
     }
 
     private fun discoverServices() {
@@ -125,6 +125,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             if (characteristic.uuid.equals(BATTERY_CHARACTERISTIC_UUID)) {
+                matrixWriter?.onWrite()
                 batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: -1
                 notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
             }
