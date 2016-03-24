@@ -60,6 +60,12 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         matrixWriter = null
     }
 
+    private fun readBatteryPercentage() {
+        val batteryCharacteristic = gatt?.getService(BATTERY_SERVICE_UUID)?.getCharacteristic(BATTERY_CHARACTERISTIC_UUID) ?: return
+
+        writeQueue.push { gatt?.readCharacteristic(batteryCharacteristic) }
+    }
+
     private fun discoverServices() {
         mainHandler.post { gatt?.discoverServices() }
         //TODO: Start timeout that disconnects if services are not discovered and descriptors are not written in time
@@ -117,9 +123,23 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
             }
         }
 
+        override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            if (characteristic.uuid.equals(BATTERY_CHARACTERISTIC_UUID)) {
+                matrixWriter?.onWrite()
+                batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: -1
+                notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
+            }
+        }
+
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            val event = characteristic.toNuimoGestureEvent() ?: return
-            notifyListeners { it.onGestureEvent(event) }
+            if (characteristic.uuid.equals(BATTERY_CHARACTERISTIC_UUID)) {
+                batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
+                notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
+            }
+            else {
+                val event = characteristic.toNuimoGestureEvent() ?: return
+                notifyListeners { it.onGestureEvent(event) }
+            }
         }
 
         override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
@@ -127,6 +147,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 // When the last characteristic descriptor has been written, then Nuimo is successfully connected
                 gattConnected = true
                 connectionState = NuimoConnectionState.CONNECTED
+                readBatteryPercentage()
                 notifyListeners { it.onConnect() }
             }
         }
@@ -236,7 +257,7 @@ val NUIMO_SERVICE_UUIDS = arrayOf(
 )
 
 private val CHARACTERISTIC_NOTIFICATION_UUIDS = arrayOf(
-        //BATTERY_CHARACTERISTIC_UUID,
+        BATTERY_CHARACTERISTIC_UUID,
         SENSOR_FLY_CHARACTERISTIC_UUID,
         SENSOR_TOUCH_CHARACTERISTIC_UUID,
         SENSOR_ROTATION_CHARACTERISTIC_UUID,
