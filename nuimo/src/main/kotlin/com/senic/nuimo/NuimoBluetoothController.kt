@@ -344,10 +344,11 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
                     0 to NuimoGesture.FLY_LEFT,
                     1 to NuimoGesture.FLY_RIGHT,
                     2 to NuimoGesture.FLY_BACKWARDS,
-                    3 to NuimoGesture.FLY_TOWARDS
+                    3 to NuimoGesture.FLY_TOWARDS,
+                    4 to NuimoGesture.FLY_UP_DOWN
             )[getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)]
-            val speed = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 1)
-            return if (gesture != null) NuimoGestureEvent(gesture, speed) else null
+            val distance = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 1)
+            return if (gesture != null) NuimoGestureEvent(gesture, if (gesture == NuimoGesture.FLY_UP_DOWN) { distance } else { 0 }) else null
         }
         else -> null
     }

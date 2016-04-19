@@ -33,5 +33,6 @@ enum class NuimoGesture {
     FLY_LEFT,
     FLY_RIGHT,
     FLY_BACKWARDS,
-    FLY_TOWARDS
+    FLY_TOWARDS,
+    FLY_UP_DOWN
 }
