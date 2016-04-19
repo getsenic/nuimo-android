@@ -25,7 +25,15 @@ abstract class NuimoController(address: String) {
 
     abstract fun disconnect()
 
-    abstract fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double = defaultMatrixDisplayInterval)
+    fun displayLedMatrix(matrix: NuimoLedMatrix) {
+        displayLedMatrix(matrix, defaultMatrixDisplayInterval, false)
+    }
+
+    fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double) {
+        displayLedMatrix(matrix, displayInterval, false)
+    }
+
+    abstract fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean)
 
     fun addControllerListener(controllerListener: NuimoControllerListener) {
         listeners.add(controllerListener)
