@@ -15,7 +15,7 @@ Your Android project must target at least API level 18. Earlier Android versions
 ```groovy
 dependencies {
    ...
-   compile "com.senic:nuimo-android:0.3.2"
+   compile "com.senic:nuimo-android:0.3.3"
    compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.0"
 }
 ```
