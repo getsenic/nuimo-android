@@ -43,7 +43,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     override fun disconnect() {
         if (gatt == null) return
 
-        connectionState = NuimoConnectionState.DISCONNECTING
+        if (connectionState != NuimoConnectionState.DISCONNECTED) {
+            connectionState = NuimoConnectionState.DISCONNECTING
+        }
 
         val gattToClose = gatt
         mainHandler.post {
