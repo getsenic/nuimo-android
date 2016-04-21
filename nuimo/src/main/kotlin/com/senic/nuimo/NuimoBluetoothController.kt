@@ -304,7 +304,7 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
         }
         SENSOR_ROTATION_CHARACTERISTIC_UUID -> {
             val value = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0) ?: 0
-            return NuimoGestureEvent(if (value >= 0) NuimoGesture.ROTATE_RIGHT else NuimoGesture.ROTATE_LEFT, Math.abs(value))
+            return NuimoGestureEvent(NuimoGesture.ROTATE, value)
         }
         SENSOR_TOUCH_CHARACTERISTIC_UUID -> {
             if (value.size == 1) {

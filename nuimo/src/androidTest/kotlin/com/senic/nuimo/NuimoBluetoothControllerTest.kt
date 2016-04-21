@@ -203,18 +203,21 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
     }
 
     fun testNuimoControllerShouldReceiveRotationEvents() {
-        val rotationTest = { swipeDirection: NuimoGesture, matrixString: String ->
+        val directionClockwise = 1
+        val directionCounterclockwise = -1
+
+        val rotationTest = { rotationDirection: Int, matrixString: String ->
             var accumulatedRotationValue = 0
             val maxRotationValue = 2666 /* 1 rotation */
-            gestureRepetitionTest(45.0, swipeDirection, matrixString, 18) { steps, rotationValue ->
+            gestureRepetitionTest(45.0, NuimoGesture.ROTATE, matrixString, 18) { steps, rotationValue ->
                 accumulatedRotationValue += rotationValue ?: 0
                 println("accumulatedRotationValue: $accumulatedRotationValue")
-                (accumulatedRotationValue.toDouble() / maxRotationValue * 18).toInt()
+                (accumulatedRotationValue.toDouble() / maxRotationValue * 18 * rotationDirection).toInt()
             }
         }
 
-        rotationTest(NuimoGesture.ROTATE_RIGHT, NuimoLedMatrix.rotateRightMatrixString())
-        rotationTest(NuimoGesture.ROTATE_LEFT, NuimoLedMatrix.rotateLeftMatrixString())
+        rotationTest(directionClockwise, NuimoLedMatrix.rotateRightMatrixString())
+        rotationTest(directionCounterclockwise, NuimoLedMatrix.rotateLeftMatrixString())
     }
 
     fun testNuimoControllerShouldReceiveSwipeEvents() {

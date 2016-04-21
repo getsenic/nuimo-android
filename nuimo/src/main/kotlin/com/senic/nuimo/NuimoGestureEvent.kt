@@ -15,9 +15,7 @@ class NuimoGestureEvent(gesture: NuimoGesture, value: Int? = null) {
 enum class NuimoGesture {
     BUTTON_PRESS,
     BUTTON_RELEASE,
-    //TODO: Synthesize rotation events into a single type "ROTATE"?
-    ROTATE_LEFT,
-    ROTATE_RIGHT,
+    ROTATE,
     TOUCH_LEFT_DOWN,
     TOUCH_LEFT_RELEASE,
     TOUCH_RIGHT_DOWN,
