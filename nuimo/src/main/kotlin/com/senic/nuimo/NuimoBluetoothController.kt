@@ -73,8 +73,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         //TODO: Start timeout that disconnects if services are not discovered and descriptors are not written in time
     }
 
-    override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double) {
-        matrixWriter?.write(matrix, displayInterval)
+    override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean) {
+        matrixWriter?.write(matrix, displayInterval, resendsSameMatrix)
     }
 
     private inner class GattCallback: BluetoothGattCallback() {
@@ -206,9 +206,19 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     private var writeQueue = writeQueue
     private var currentMatrix: NuimoLedMatrix? = null
     private var currentMatrixDisplayIntervalSecs = 0.0
+    private var lastWrittenMatrix: NuimoLedMatrix? = null
+    private var lastWrittenMatrixTime = 0L
+    private var lastWrittenMatrixDisplayInterval = 0.0
     private var writeMatrixOnWriteResponseReceived = false
 
-    fun write(matrix: NuimoLedMatrix, displayInterval: Double) {
+    fun write(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean) {
+        if (!resendsSameMatrix &&
+                matrix == lastWrittenMatrix &&
+                (lastWrittenMatrixDisplayInterval > 0 &&
+                System.currentTimeMillis() < (lastWrittenMatrixTime + lastWrittenMatrixDisplayInterval))) {
+            return
+        }
+
         currentMatrix = matrix
         currentMatrixDisplayIntervalSecs = displayInterval
 
@@ -223,6 +233,10 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         writeQueue.push {
             matrixCharacteristic.value = gattBytes
             gatt.writeCharacteristic(matrixCharacteristic)
+
+            lastWrittenMatrix = currentMatrix
+            lastWrittenMatrixTime = System.currentTimeMillis()
+            lastWrittenMatrixDisplayInterval = currentMatrixDisplayIntervalSecs * 1000
         }
     }
 
