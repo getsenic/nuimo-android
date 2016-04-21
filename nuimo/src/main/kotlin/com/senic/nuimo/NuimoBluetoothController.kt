@@ -233,11 +233,11 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         writeQueue.push {
             matrixCharacteristic.value = gattBytes
             gatt.writeCharacteristic(matrixCharacteristic)
-
-            lastWrittenMatrix = currentMatrix
-            lastWrittenMatrixTime = System.currentTimeMillis()
-            lastWrittenMatrixDisplayInterval = currentMatrixDisplayIntervalSecs * 1000
         }
+
+        lastWrittenMatrix = currentMatrix
+        lastWrittenMatrixTime = System.currentTimeMillis()
+        lastWrittenMatrixDisplayInterval = currentMatrixDisplayIntervalSecs * 1000
     }
 
     fun onWrite() {
