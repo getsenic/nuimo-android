@@ -59,7 +59,7 @@ buildscript {
 }
 
 publish {
-    userOrg = 'larsblumberg'
+    userOrg = 'senic'
     groupId = 'com.senic'
     artifactId = 'nuimo-android'
     publishVersion = android.defaultConfig.versionName
