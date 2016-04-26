@@ -109,7 +109,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 if (LED_MATRIX_CHARACTERISTIC_UUID == it.uuid) {
                     matrixWriter = LedMatrixWriter(gatt, it, writeQueue)
                 } else if (CHARACTERISTIC_NOTIFICATION_UUIDS.contains(it.uuid)) {
-                    writeQueue.push { gatt.setCharacteristicNotification2(it, true) }
+                    writeQueue.push { if (!gatt.setCharacteristicNotification2(it, true)) disconnect() }
                 }
             }
         }
@@ -406,7 +406,11 @@ private fun BluetoothGatt.setCharacteristicNotification2(characteristic: Bluetoo
     setCharacteristicNotification(characteristic, enable)
     // http://stackoverflow.com/questions/17910322/android-ble-api-gatt-notification-not-received
     val descriptor = characteristic.getDescriptor(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID);
-    descriptor.value = if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
+    if (descriptor == null) {
+        Log.e("Nuimo", "Notification descriptor is null for characteristic " + characteristic.uuid + " for Nuimo " + device.address)
+        return false
+    }
+    descriptor.value = if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
     //TODO: I observed cases where writeDescriptor wasn't followed up by a onDescriptorWrite notification -> We need a timeout here and error handling.
-    return writeDescriptor(descriptor);
+    return writeDescriptor(descriptor)
 }
