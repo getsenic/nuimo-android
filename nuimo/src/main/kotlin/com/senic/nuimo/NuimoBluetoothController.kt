@@ -28,7 +28,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private var matrixWriter: LedMatrixWriter? = null
 
     override fun connect() {
-        if (gatt != null) { return }
+        if (connectionState != NuimoConnectionState.DISCONNECTED) { return }
 
         reset()
 
