@@ -73,8 +73,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         //TODO: Start timeout that disconnects if services are not discovered and descriptors are not written in time
     }
 
-    override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean) {
-        matrixWriter?.write(matrix, displayInterval, resendsSameMatrix)
+    override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean, writesWithResponse: Boolean) {
+        matrixWriter?.write(matrix, displayInterval, resendsSameMatrix, writesWithResponse)
     }
 
     private inner class GattCallback: BluetoothGattCallback() {
@@ -117,8 +117,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             when (characteristic.uuid) {
                 LED_MATRIX_CHARACTERISTIC_UUID -> {
-                    matrixWriter?.onWrite()
-                    if (status == BluetoothGatt.GATT_SUCCESS) {
+                    if (matrixWriter?.onWrite() ?: false) {
                         notifyListeners { it.onLedMatrixWrite() }
                     }
                 }
@@ -209,9 +208,10 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     private var lastWrittenMatrix: NuimoLedMatrix? = null
     private var lastWrittenMatrixTime = 0L
     private var lastWrittenMatrixDisplayInterval = 0.0
+    private var pendingWriteCommandsWithoutResponseCount = 0
     private var writeMatrixOnWriteResponseReceived = false
 
-    fun write(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean) {
+    fun write(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean, writesWithResponse: Boolean) {
         if (!resendsSameMatrix &&
                 matrix == lastWrittenMatrix &&
                 (lastWrittenMatrixDisplayInterval > 0 &&
@@ -222,17 +222,29 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         currentMatrix = matrix
         currentMatrixDisplayIntervalSecs = displayInterval
 
-        when (writeQueue.isIdle) {
-            true  -> writeNow()
+        when (writeQueue.isIdle || !writesWithResponse) {
+            true  -> writeNow(writesWithResponse)
             false -> writeMatrixOnWriteResponseReceived = true
         }
     }
 
-    private fun writeNow() {
+    private fun writeNow(withResponse: Boolean) {
         val gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes() + byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
-        writeQueue.push {
+
+        val writeCommand: () -> Unit = {
+            matrixCharacteristic.writeType = when (withResponse) {
+                true  -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                false -> BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            }
             matrixCharacteristic.value = gattBytes
+
+            if (!withResponse) pendingWriteCommandsWithoutResponseCount++
             gatt.writeCharacteristic(matrixCharacteristic)
+        }
+
+        when (withResponse) {
+            true  -> writeQueue.push(writeCommand)
+            false -> writeCommand()
         }
 
         lastWrittenMatrix = currentMatrix
@@ -240,12 +252,22 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         lastWrittenMatrixDisplayInterval = currentMatrixDisplayIntervalSecs * 1000
     }
 
-    fun onWrite() {
+    /**
+     * Returns true when it was handling a matrix write response from a "write with response request", otherwise false
+     */
+    fun onWrite(): Boolean {
+        if (pendingWriteCommandsWithoutResponseCount > 0) {
+            pendingWriteCommandsWithoutResponseCount--
+            return false
+        }
+
         writeQueue.next()
         if (writeMatrixOnWriteResponseReceived) {
             writeMatrixOnWriteResponseReceived = false
-            writeNow()
+            writeNow(true)
         }
+
+        return true
     }
 }
 

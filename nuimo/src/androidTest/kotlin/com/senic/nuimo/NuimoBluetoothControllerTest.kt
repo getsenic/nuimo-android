@@ -117,27 +117,41 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         }
     }
 
+    fun testNuimoControllerShouldNotReceiveLedMatrixWriteResponseWhenWritingWithoutResponseRequest() {
+        connectAndWait(30.0) { nuimoController, completed ->
+            nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
+                override fun onLedMatrixWrite() {
+                    fail("Nuimo controller should not receive LED matrix write response when writing without response request")
+                }
+            })
+            with(Timer(), {
+                schedule(0, 20, {
+                    nuimoController.displayLedMatrix(NuimoLedMatrix.randomLedMatrix(), false, false)
+                })
+                after(10.0) {
+                    cancel()
+                    completed()
+                }
+            })
+        }.onTimeout {
+            fail("Nuimo controller should write to LED matrix within timeout")
+        }
+    }
+
     //TODO: Remove this test, the next one makes it obsolete. The x-mas animation is however very fancy. Put it somewhere else.
     fun testNuimoControllerShouldPlayLedMatrixAnimation() {
         connectAndWait(30.0) { nuimoController, completed ->
             val frameCount = 100
             var frameIndex = 0
-            val nextFrame = {
-                nuimoController.displayLedMatrix(NuimoLedMatrix(NuimoLedMatrix
-                    .animatableMatrixString()
-                    .toList()
-                    .map { if (it == 'o' && Math.random() > 0.8) " " else it.toString() }
-                    .reduce { s, c -> s + c }), 20.0)
-            }
             nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onLedMatrixWrite() {
                     when (++frameIndex) {
-                        in 1..frameCount-1 -> nextFrame()
+                        in 1..frameCount-1 -> nuimoController.displayLedMatrix(NuimoLedMatrix.randomLedMatrix())
                         else               -> completed()
                     }
                 }
             })
-            nextFrame()
+            nuimoController.displayLedMatrix(NuimoLedMatrix.randomLedMatrix())
         }.onTimeout {
             fail("Nuimo controller should play LED matrix animation within timeout")
         }
@@ -296,6 +310,12 @@ private abstract class LedMatrixGuidedNuimoControllerListener(controller: NuimoC
         controller.displayLedMatrix(matrixForState[initialState] ?: NuimoLedMatrix.emoticonSadMatrix())
     }
 }
+
+private fun NuimoLedMatrix.Companion.randomLedMatrix() = NuimoLedMatrix(NuimoLedMatrix
+        .animatableMatrixString()
+        .toList()
+        .map { if (it == 'o' && Math.random() > 0.8) " " else it.toString() }
+        .reduce { s, c -> s + c })
 
 private fun NuimoLedMatrix.Companion.pressButtonMatrix() = NuimoLedMatrix(
         "         " +

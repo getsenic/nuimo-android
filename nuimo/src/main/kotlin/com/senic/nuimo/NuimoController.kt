@@ -26,14 +26,22 @@ abstract class NuimoController(address: String) {
     abstract fun disconnect()
 
     fun displayLedMatrix(matrix: NuimoLedMatrix) {
-        displayLedMatrix(matrix, defaultMatrixDisplayInterval, true)
+        displayLedMatrix(matrix, defaultMatrixDisplayInterval, true, true)
     }
 
     fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double) {
-        displayLedMatrix(matrix, displayInterval, true)
+        displayLedMatrix(matrix, displayInterval, true, true)
     }
 
-    abstract fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean)
+    fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean) {
+        displayLedMatrix(matrix, displayInterval, resendsSameMatrix, true)
+    }
+
+    fun displayLedMatrix(matrix: NuimoLedMatrix, resendsSameMatrix: Boolean, writesWithResponse: Boolean) {
+        displayLedMatrix(matrix, defaultMatrixDisplayInterval, resendsSameMatrix, writesWithResponse)
+    }
+
+    abstract fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean, writesWithResponse: Boolean)
 
     fun addControllerListener(controllerListener: NuimoControllerListener) {
         listeners.add(controllerListener)
