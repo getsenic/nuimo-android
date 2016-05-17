@@ -149,7 +149,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         val maxWriteDurationForSingleFrameMillis = 1000L
         val frameCount = sendFramesDurationMillis / sendFramesIntervalMillis
         var framesWritten = 0
-        val expectedAnimationDurationMillis = sendFramesDurationMillis + 2 * maxWriteDurationForSingleFrameMillis
+        val expectedAnimationDurationMillis = sendFramesDurationMillis + 1 * maxWriteDurationForSingleFrameMillis
         var actualAnimationDurationMillis = 0L
 
         val timer = Timer()
@@ -157,7 +157,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
             var frameIndex = 0
             // Send frames faster than the device can handle to force controller to drop frames during the frame animation
             val animationStartedNanos = System.nanoTime()
-            timer.schedule(0, sendFramesIntervalMillis, {
+            var animationTimer = timer.schedule(0, sendFramesIntervalMillis, {
                 if (++frameIndex <= frameCount) {
                     nuimoController.displayLedMatrix(NuimoLedMatrix("*".repeat(frameIndex % 81 + 1)))
                 }
@@ -165,7 +165,13 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
             // Stop frame animation when expected animation duration is reached
             //TODO: Use onTimeout() capability of connect() to implement fail on timeout
             timer.schedule(2 * maxWriteDurationForSingleFrameMillis, 200) {
-                if (System.nanoTime() - animationStartedNanos >= expectedAnimationDurationMillis * 1000000L) { completed() }
+                val elapsedNanos = System.nanoTime() - animationStartedNanos
+                if (elapsedNanos >= sendFramesDurationMillis * 1000000L) {
+                    animationTimer.cancel()
+                    if (elapsedNanos >= expectedAnimationDurationMillis * 1000000L) {
+                        completed()
+                    }
+                }
             }
             nuimoController.addControllerListener(object: BaseNuimoControllerListener() {
                 override fun onLedMatrixWrite() {
@@ -179,7 +185,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
         println("Fast animation test has written $framesWritten frames of $frameCount total in $actualAnimationDurationMillis milliseconds (= ${(framesWritten / (actualAnimationDurationMillis / 1000.0)).toInt()} FPS). Maximum expected duration: $expectedAnimationDurationMillis milliseconds")
 
         assertTrue("Nuimo controller should have written at least one frame", framesWritten > 0)
-        assertTrue("Nuimo controller should have finished animation within $expectedAnimationDurationMillis milliseconds but it took $actualAnimationDurationMillis milliseconds", actualAnimationDurationMillis <= expectedAnimationDurationMillis)
+        assertTrue("Nuimo controller should stop receiving write responses before $expectedAnimationDurationMillis milliseconds but it received another response at $actualAnimationDurationMillis milliseconds", actualAnimationDurationMillis <= expectedAnimationDurationMillis)
         assertTrue("Nuimo controller should have dropped some LED matrix frames but it wrote all $frameCount frames", framesWritten < frameCount)
     }
 
