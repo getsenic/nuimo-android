@@ -126,7 +126,7 @@ class NuimoBluetoothControllerTest: NuimoDiscoveryManagerTest() {
             })
             with(Timer(), {
                 schedule(0, 20, {
-                    nuimoController.displayLedMatrix(NuimoLedMatrix.randomLedMatrix(), false, false)
+                    nuimoController.displayLedMatrix(NuimoLedMatrix.randomLedMatrix(), NuimoController.OPTION_WITHOUT_WRITE_RESPONSE)
                 })
                 after(10.0) {
                     cancel()

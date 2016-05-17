@@ -10,6 +10,15 @@ package com.senic.nuimo
 import java.util.*
 
 abstract class NuimoController(address: String) {
+    companion object {
+        @JvmField
+        val OPTION_IGNORE_DUPLICATES           = 1 shl 0
+        @JvmField
+        val OPTION_WITH_ONION_SKINNING_FADE_IN = 1 shl 1
+        @JvmField
+        val OPTION_WITHOUT_WRITE_RESPONSE      = 1 shl 2
+    }
+
     val address: String = address
     var defaultMatrixDisplayInterval = 2.0
 
@@ -26,22 +35,18 @@ abstract class NuimoController(address: String) {
     abstract fun disconnect()
 
     fun displayLedMatrix(matrix: NuimoLedMatrix) {
-        displayLedMatrix(matrix, defaultMatrixDisplayInterval, true, true)
+        displayLedMatrix(matrix, defaultMatrixDisplayInterval, 0)
     }
 
     fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double) {
-        displayLedMatrix(matrix, displayInterval, true, true)
+        displayLedMatrix(matrix, displayInterval, 0)
     }
 
-    fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean) {
-        displayLedMatrix(matrix, displayInterval, resendsSameMatrix, true)
+    fun displayLedMatrix(matrix: NuimoLedMatrix, options: Int) {
+        displayLedMatrix(matrix, defaultMatrixDisplayInterval, options)
     }
 
-    fun displayLedMatrix(matrix: NuimoLedMatrix, resendsSameMatrix: Boolean, writesWithResponse: Boolean) {
-        displayLedMatrix(matrix, defaultMatrixDisplayInterval, resendsSameMatrix, writesWithResponse)
-    }
-
-    abstract fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean, writesWithResponse: Boolean)
+    abstract fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, options: Int)
 
     fun addControllerListener(controllerListener: NuimoControllerListener) {
         listeners.add(controllerListener)

@@ -73,8 +73,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         //TODO: Start timeout that disconnects if services are not discovered and descriptors are not written in time
     }
 
-    override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean, writesWithResponse: Boolean) {
-        matrixWriter?.write(matrix, displayInterval, resendsSameMatrix, writesWithResponse)
+    override fun displayLedMatrix(matrix: NuimoLedMatrix, displayInterval: Double, options: Int) {
+        matrixWriter?.write(matrix, displayInterval, options)
     }
 
     private inner class GattCallback: BluetoothGattCallback() {
@@ -205,13 +205,18 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     private var writeQueue = writeQueue
     private var currentMatrix: NuimoLedMatrix? = null
     private var currentMatrixDisplayIntervalSecs = 0.0
+    private var currentMatrixWithOnionSkinningFadeIn = false
     private var lastWrittenMatrix: NuimoLedMatrix? = null
     private var lastWrittenMatrixTime = 0L
     private var lastWrittenMatrixDisplayInterval = 0.0
     private var pendingWriteCommandsWithoutResponseCount = 0
     private var writeMatrixOnWriteResponseReceived = false
 
-    fun write(matrix: NuimoLedMatrix, displayInterval: Double, resendsSameMatrix: Boolean, writesWithResponse: Boolean) {
+    fun write(matrix: NuimoLedMatrix, displayInterval: Double, options: Int) {
+        val resendsSameMatrix       = options and NuimoController.OPTION_IGNORE_DUPLICATES           == 0
+        val withOnionSkinningFadeIn = options and NuimoController.OPTION_WITH_ONION_SKINNING_FADE_IN != 0
+        val writesWithResponse      = options and NuimoController.OPTION_WITHOUT_WRITE_RESPONSE      == 0
+
         if (!resendsSameMatrix &&
                 matrix == lastWrittenMatrix &&
                 (lastWrittenMatrixDisplayInterval > 0 &&
@@ -219,8 +224,9 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
             return
         }
 
-        currentMatrix = matrix
-        currentMatrixDisplayIntervalSecs = displayInterval
+        currentMatrix                        = matrix
+        currentMatrixDisplayIntervalSecs     = displayInterval
+        currentMatrixWithOnionSkinningFadeIn = withOnionSkinningFadeIn
 
         when (writeQueue.isIdle || !writesWithResponse) {
             true  -> writeNow(writesWithResponse)
@@ -229,7 +235,8 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     }
 
     private fun writeNow(withResponse: Boolean) {
-        val gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes() + byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
+        var gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes() + byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
+        gattBytes[10] = (gattBytes[10].toInt() or (if (currentMatrixWithOnionSkinningFadeIn) { 1 shl 4 } else { 0 })).toByte()
 
         val writeCommand: () -> Unit = {
             matrixCharacteristic.writeType = when (withResponse) {
