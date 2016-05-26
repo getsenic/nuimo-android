@@ -65,7 +65,12 @@ class NuimoDiscoveryManager(context: Context) {
 
     fun stopDiscovery() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallbackApi21)
+            try {
+                bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallbackApi21)
+            }
+            catch (ignore: NullPointerException) {
+                // Catches exception caused by a bug in Android 5.0: https://code.google.com/p/android/issues/detail?id=160503
+            }
         }
         else {
             @Suppress("DEPRECATION")
