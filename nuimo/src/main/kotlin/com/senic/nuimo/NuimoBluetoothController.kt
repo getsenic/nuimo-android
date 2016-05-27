@@ -209,8 +209,12 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     private var lastWrittenMatrix: NuimoLedMatrix? = null
     private var lastWrittenMatrixTime = 0L
     private var lastWrittenMatrixDisplayInterval = 0.0
-    private var pendingWriteCommandsWithoutResponseCount = 0
+    private var lastWrittenMatrixWithoutResponseTime = 0L
     private var writeMatrixOnWriteResponseReceived = false
+    private var pendingWriteCommandsWithoutResponseCount = 0
+    private val writeResponseTimeout = 500L //ms
+    private val writeResponseCheckInterval = 100L //ms
+    private var writeResponseTimeoutTimer: Timer? = null
 
     fun write(matrix: NuimoLedMatrix, displayInterval: Double, options: Int) {
         val resendsSameMatrix       = options and NuimoController.OPTION_IGNORE_DUPLICATES           == 0
@@ -235,7 +239,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     }
 
     private fun writeNow(withResponse: Boolean) {
-        var gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes() + byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
+        val gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes() + byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
         gattBytes[10] = (gattBytes[10].toInt() or (if (currentMatrixWithOnionSkinningFadeIn) { 1 shl 4 } else { 0 })).toByte()
 
         val writeCommand: () -> Unit = {
@@ -245,7 +249,18 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
             }
             matrixCharacteristic.value = gattBytes
 
-            if (!withResponse) pendingWriteCommandsWithoutResponseCount++
+            if (!withResponse) {
+                pendingWriteCommandsWithoutResponseCount++
+                // Sometimes android doesn't call onCharacteristicWrite() callback when you send a lot of write commands fast.
+                lastWrittenMatrixWithoutResponseTime = System.currentTimeMillis()
+
+                synchronized(this) {
+                    if (writeResponseTimeoutTimer == null) {
+                        writeResponseTimeoutTimer = Timer("MatrixWriteTimeoutTimer")
+                        writeResponseTimeoutTimer?.schedule(WriteResponseTimeoutTimerTask(), writeResponseCheckInterval, writeResponseCheckInterval)
+                    }
+                }
+            }
             gatt.writeCharacteristic(matrixCharacteristic)
         }
 
@@ -275,6 +290,21 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         }
 
         return true
+    }
+
+    private inner class WriteResponseTimeoutTimerTask: TimerTask() {
+        override fun run() {
+            if (System.currentTimeMillis() < lastWrittenMatrixWithoutResponseTime + writeResponseTimeout) return
+
+            synchronized(this@LedMatrixWriter) {
+                writeResponseTimeoutTimer?.cancel()
+                writeResponseTimeoutTimer = null
+            }
+
+            pendingWriteCommandsWithoutResponseCount = 0
+
+            onWrite()
+        }
     }
 }
 
