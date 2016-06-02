@@ -42,7 +42,7 @@ The following code example demonstrates how to discover, connect and receive ges
 
 ```java
 public class MainActivity extends AppCompatActivity implements NuimoDiscoveryListener {
-    NuimoDiscoveryManager nuimoDiscovery = new NuimoDiscoveryManager(this);
+    NuimoDiscoveryManager nuimoDiscovery = new NuimoDiscoveryManager(getApplicationContext());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

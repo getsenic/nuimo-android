@@ -29,7 +29,7 @@ class NuimoDiscoveryManager(context: Context) {
         const val PERMISSIONS_REQUEST_CODE = 235
     }
 
-    private val context = context
+    private val context: Context = if (context is Activity) { context.applicationContext } else { context }
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter() //: BluetoothAdapter by lazy { bluetoothManager.adapter }
     private val scanCallbackApi18: ScanCallbackApi18 by lazy { ScanCallbackApi18() }
     private val scanCallbackApi21: ScanCallbackApi21 by lazy { ScanCallbackApi21() }
