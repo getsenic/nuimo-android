@@ -12,10 +12,13 @@ import android.annotation.TargetApi
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.Build
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import java.util.ArrayList
@@ -32,6 +35,7 @@ class NuimoDiscoveryManager(context: Context) {
     private val scanCallbackApi21: ScanCallbackApi21 by lazy { ScanCallbackApi21() }
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
     private var shouldStartDiscoveryWhenPermissionsGranted = false
+    private var scanPowerModeWhenPermissionsGranted = ScanSettings.SCAN_MODE_LOW_POWER
     private val discoveredControllers = ArrayList<NuimoController>()
 
     fun addDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
@@ -42,11 +46,30 @@ class NuimoDiscoveryManager(context: Context) {
         discoveryListeners.remove(discoveryListener)
     }
 
-    fun startDiscovery(): Boolean {
+    /**
+     * Starts discovery of Nuimos in low power mode
+     * @see ScanSettings.SCAN_MODE_LOW_POWER
+     * @deprecated use {@link #startDiscovery(int scanPowerMode)}
+     */
+    @Deprecated("This method is deprecated, use startDiscovery(scanPowerMode) instead", ReplaceWith("startDiscovery(ScanSettings.SCAN_MODE_LOW_POWER)"))
+    fun startDiscovery(): Boolean = startDiscovery(ScanSettings.SCAN_MODE_LOW_POWER)
+
+    /**
+     * Start discovery of Nuimos
+     * @param scanPowerMode - The power mode can be one of {@link ScanSettings#SCAN_MODE_LOW_POWER}, {@link ScanSettings#SCAN_MODE_BALANCED} or {@link ScanSettings#SCAN_MODE_LOW_LATENCY}.
+     * @see ScanSettings.SCAN_MODE_LOW_POWER
+     * @see ScanSettings.SCAN_MODE_LOW_LATENCY
+     * @see ScanSettings.SCAN_MODE_BALANCED
+     */
+    fun startDiscovery(scanPowerMode: Int = ScanSettings.SCAN_MODE_LOW_POWER): Boolean {
         shouldStartDiscoveryWhenPermissionsGranted = true
-        if (!checkPermissions(context as? Activity)) { return false }
-        //TODO: Start discovery automatically when bluetooth is turned on later (unless stopDiscovery was called)
-        if (!checkBluetoothEnabled()) { return false }
+        scanPowerModeWhenPermissionsGranted = scanPowerMode
+
+        when {
+            !checkPermissions(context as? Activity)     -> return false
+            scanPowerMode < 0 || scanPowerMode > 2      -> throw IllegalArgumentException("scanPowerMode should be one of of ScanSettings.SCAN_MODE_LOW_POWER, ScanSettings.SCAN_MODE_BALANCED or ScanSettings.SCAN_MODE_LOW_LATENCY")
+            !checkBluetoothEnabled()                    -> return false
+        }
 
         discoveredControllers.clear()
 
@@ -58,14 +81,25 @@ class NuimoDiscoveryManager(context: Context) {
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             if ((android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) && !checkLocationServiceEnabled()) { return false }
-            bluetoothAdapter?.bluetoothLeScanner?.startScan(scanCallbackApi21)
+            startDiscoveryLollipop(scanPowerMode)
         }
         else {
-            @Suppress("DEPRECATION")
-            bluetoothAdapter?.startLeScan(/*NUIMO_SERVICE_UUIDS,*/ scanCallbackApi18)
+            startDiscoveryLegacy()
         }
 
         return true
+    }
+
+    private fun startDiscoveryLegacy() {
+        @Suppress("DEPRECATION")
+        bluetoothAdapter?.startLeScan(/*NUIMO_SERVICE_UUIDS,*/ scanCallbackApi18)
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun startDiscoveryLollipop(powerMode: Int) {
+        val filters = listOf(ScanFilter.Builder().setDeviceName("Nuimo").build())
+        val scanSettings = ScanSettings.Builder().setScanMode(powerMode).build()
+        bluetoothAdapter?.bluetoothLeScanner?.startScan(filters, scanSettings, scanCallbackApi21)
     }
 
     fun stopDiscovery() {
@@ -140,7 +174,7 @@ class NuimoDiscoveryManager(context: Context) {
 
         val permissionGranted = grantResults[permissionIndex] == PackageManager.PERMISSION_GRANTED
         if (permissionGranted && shouldStartDiscoveryWhenPermissionsGranted) {
-            startDiscovery()
+            startDiscovery(scanPowerModeWhenPermissionsGranted)
         }
         return permissionGranted
     }
