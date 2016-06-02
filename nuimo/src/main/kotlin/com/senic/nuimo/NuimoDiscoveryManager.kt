@@ -50,6 +50,9 @@ class NuimoDiscoveryManager(context: Context) {
 
         discoveredControllers.clear()
 
+        // Detect if any Nuimo is already paired
+        bluetoothAdapter?.bondedDevices?.forEach { onDeviceFound(it) }
+
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             if ((android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) && !checkLocationServiceEnabled()) { return false }
