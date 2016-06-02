@@ -53,6 +53,8 @@ class NuimoDiscoveryManager(context: Context) {
         // Detect if any Nuimo is already paired
         bluetoothAdapter?.bondedDevices?.forEach { onDeviceFound(it) }
 
+        if (bluetoothAdapter?.state != BluetoothAdapter.STATE_ON) return false
+
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             if ((android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) && !checkLocationServiceEnabled()) { return false }
@@ -67,6 +69,10 @@ class NuimoDiscoveryManager(context: Context) {
     }
 
     fun stopDiscovery() {
+        shouldStartDiscoveryWhenPermissionsGranted = false
+
+        if (bluetoothAdapter?.state != BluetoothAdapter.STATE_ON) return
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             try {
                 bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallbackApi21)
@@ -79,7 +85,6 @@ class NuimoDiscoveryManager(context: Context) {
             @Suppress("DEPRECATION")
             bluetoothAdapter?.stopLeScan(scanCallbackApi18)
         }
-        shouldStartDiscoveryWhenPermissionsGranted = false
     }
 
     /**
