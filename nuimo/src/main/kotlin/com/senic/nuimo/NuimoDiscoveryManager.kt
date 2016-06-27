@@ -109,16 +109,12 @@ class NuimoDiscoveryManager(context: Context) {
         if (bluetoothAdapter?.state != BluetoothAdapter.STATE_ON) return
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            try {
-                bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallbackApi21)
-            }
-            catch (ignore: NullPointerException) {
-                // Catches exception caused by a bug in Android 5.0: https://code.google.com/p/android/issues/detail?id=160503
-            }
+            // Catches exception caused by a bug in Android: https://code.google.com/p/android/issues/detail?id=160503
+            withCatchNullPointerException { bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallbackApi21) }
         }
         else {
-            @Suppress("DEPRECATION")
-            bluetoothAdapter?.stopLeScan(scanCallbackApi18)
+            // Catches exception caused by a bug in Android: https://code.google.com/p/android/issues/detail?id=160503
+            withCatchNullPointerException { bluetoothAdapter?.stopLeScan(scanCallbackApi18) }
         }
     }
 
@@ -215,4 +211,11 @@ class NuimoDiscoveryManager(context: Context) {
 
 interface NuimoDiscoveryListener {
     fun onDiscoverNuimoController(nuimoController: NuimoController)
+}
+
+private fun withCatchNullPointerException(tryBlock: () -> Unit) {
+    try {
+        tryBlock()
+    }
+    catch(ignore: NullPointerException) { }
 }
