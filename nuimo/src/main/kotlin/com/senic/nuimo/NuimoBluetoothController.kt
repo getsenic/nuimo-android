@@ -62,10 +62,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         matrixWriter = null
     }
 
-    private fun readBatteryPercentage() {
-        val batteryCharacteristic = gatt?.getService(BATTERY_SERVICE_UUID)?.getCharacteristic(BATTERY_CHARACTERISTIC_UUID) ?: return
-
-        writeQueue.push { gatt?.readCharacteristic(batteryCharacteristic) }
+    private fun readCharacteristic(serviceUUID: UUID, characteristicUUID: UUID) {
+        val characteristic = gatt?.getService(serviceUUID)?.getCharacteristic(characteristicUUID) ?: return
+        writeQueue.push { gatt?.readCharacteristic(characteristic) }
     }
 
     private fun discoverServices() {
@@ -125,10 +124,17 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            if (characteristic.uuid.equals(BATTERY_CHARACTERISTIC_UUID)) {
-                matrixWriter?.onWrite()
-                val batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: -1
-                notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
+            writeQueue.next()
+
+            when (characteristic.uuid) {
+                BATTERY_CHARACTERISTIC_UUID -> {
+                    val batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: -1
+                    notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
+                }
+                FIRMWARE_VERSION_CHARACTERISTIC_UUID -> {
+                    val firmwareVersion = characteristic.getStringValue(0)
+                    if (firmwareVersion != null) notifyListeners { it.onFirmwareVersionRead(firmwareVersion) }
+                }
             }
         }
 
@@ -148,7 +154,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 // When the last characteristic descriptor has been written, then Nuimo is successfully connected
                 gattConnected = true
                 connectionState = NuimoConnectionState.CONNECTED
-                readBatteryPercentage()
+                readCharacteristic(BATTERY_SERVICE_UUID, BATTERY_CHARACTERISTIC_UUID)
+                readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, FIRMWARE_VERSION_CHARACTERISTIC_UUID)
                 notifyListeners { it.onConnect() }
             }
         }
@@ -315,6 +322,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
 private val BATTERY_SERVICE_UUID                   = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
 private val BATTERY_CHARACTERISTIC_UUID            = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
 private val DEVICE_INFORMATION_SERVICE_UUID        = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
+private val FIRMWARE_VERSION_CHARACTERISTIC_UUID   = UUID.fromString("00002a26-0000-1000-8000-00805f9b34fb")
 private val DEVICE_INFORMATION_CHARACTERISTIC_UUID = UUID.fromString("00002a29-0000-1000-8000-00805f9b34fb")
 private val LED_MATRIX_SERVICE_UUID                = UUID.fromString("f29b1523-cb19-40f3-be5c-7241ecb82fd1")
 private val LED_MATRIX_CHARACTERISTIC_UUID         = UUID.fromString("f29b1524-cb19-40f3-be5c-7241ecb82fd1")
