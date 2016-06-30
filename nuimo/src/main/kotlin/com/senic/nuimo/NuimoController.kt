@@ -25,9 +25,6 @@ abstract class NuimoController(address: String) {
     var connectionState = NuimoConnectionState.DISCONNECTED
         protected set
 
-    var batteryPercentage = -1
-        protected set
-
     private val listeners = ArrayList<NuimoControllerListener>()
 
     abstract fun connect()
