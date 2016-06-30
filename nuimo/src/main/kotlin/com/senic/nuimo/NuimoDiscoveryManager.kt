@@ -110,12 +110,21 @@ class NuimoDiscoveryManager(context: Context) {
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             // Catches exception caused by a bug in Android: https://code.google.com/p/android/issues/detail?id=160503
-            withCatchNullPointerException { bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallbackApi21) }
+            withCatchNullPointerException { stopDiscoveryLollipop() }
         }
         else {
             // Catches exception caused by a bug in Android: https://code.google.com/p/android/issues/detail?id=160503
-            withCatchNullPointerException { bluetoothAdapter?.stopLeScan(scanCallbackApi18) }
+            withCatchNullPointerException { stopDiscoveryLegacy() }
         }
+    }
+
+    private fun stopDiscoveryLegacy() {
+        bluetoothAdapter?.stopLeScan(scanCallbackApi18)
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun stopDiscoveryLollipop() {
+        bluetoothAdapter?.bluetoothLeScanner?.stopScan(scanCallbackApi21)
     }
 
     /**
