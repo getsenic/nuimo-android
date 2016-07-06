@@ -215,6 +215,8 @@ class NuimoDiscoveryManager(context: Context) {
     private inner class ScanCallbackApi21 : android.bluetooth.le.ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) = onDeviceFound(result.device)
         override fun onScanFailed(errorCode: Int) { /* TODO: Notify listeners */ }
+        // Needed for SCAN_MODE_LOW_POWER
+        override fun onBatchScanResults(results: MutableList<ScanResult>?) { results?.forEach { onDeviceFound(it.device) } }
     }
 }
 
