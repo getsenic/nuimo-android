@@ -194,7 +194,12 @@ class NuimoDiscoveryManager(context: Context) {
      * @return true if the device has GPS enabled, otherwise false. Unfortunately necessary for Android 6.0+
      */
     //TODO: Remove when and if possible, see http://stackoverflow.com/questions/24994776/android-ble-passive-scan, https://code.google.com/p/android/issues/detail?id=189090 and https://code.google.com/p/android/issues/detail?id=196485
-    fun checkLocationServiceEnabled() = (context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager)?.isProviderEnabled(LocationManager.GPS_PROVIDER) ?: false
+    fun checkLocationServiceEnabled() : Boolean {
+        val hasGps                = context.packageManager.hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS)
+        val gpsLocationEnabled    = (context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager)?.isProviderEnabled(LocationManager.GPS_PROVIDER) ?: false
+        val coarseLocationEnabled = (context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager)?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ?: false
+        return (hasGps && gpsLocationEnabled) || (!hasGps && coarseLocationEnabled)
+    }
 
     private fun onDeviceFound(device: BluetoothDevice) {
         when {
