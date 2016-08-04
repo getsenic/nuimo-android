@@ -11,6 +11,7 @@ import android.bluetooth.*
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.support.annotation.CheckResult
 import android.util.Log
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -35,8 +36,11 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         connectionState = NuimoConnectionState.CONNECTING
 
         mainHandler.post {
-            //TODO: Figure out if and when to use autoConnect=true
+            // If there is still a reference to gatt we should close it
+            gatt?.close()
             gatt = device.connectGatt(context, false, GattCallback())
+            // TODO: if there are problems and the following result is false we should call gatt.disconnect() and try the connection again. See http://stackoverflow.com/a/34544263/91226
+            refreshGatt()
         }
     }
 
@@ -53,6 +57,18 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         reset()
+    }
+
+    private fun refreshGatt(): Boolean {
+        try {
+            val refreshed = (gatt?.javaClass?.getMethod("refresh")?.invoke(gatt)) ?: false
+            if (refreshed is Boolean) {
+                if (!refreshed) Log.e("NuimoController", "gatt.refresh() returned false")
+                return refreshed
+            }
+        }
+        catch (e: Exception) { Log.e("NuimoController", "Could not refresh gatt", e) }
+        return false
     }
 
     private fun reset() {
