@@ -37,7 +37,7 @@ class NuimoDiscoveryManager(context: Context) {
     private var shouldStartDiscoveryWhenPermissionsGranted = false
     private var scanPowerModeWhenPermissionsGranted = ScanSettings.SCAN_MODE_LOW_POWER
     private val discoveredControllers = ArrayList<NuimoController>()
-    private val nuimoDeviceName = "Nuimo"
+    private val nuimoDeviceNames = listOfNotNull("Nuimo", System.getProperty("other_nuimo_device_name", null))
 
     fun addDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
         discoveryListeners.add(discoveryListener)
@@ -98,7 +98,8 @@ class NuimoDiscoveryManager(context: Context) {
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private fun startDiscoveryLollipop(powerMode: Int) {
-        val filters = listOf(ScanFilter.Builder().setDeviceName(nuimoDeviceName).build())
+        val filters = ArrayList<ScanFilter>()
+        nuimoDeviceNames.forEach { it -> filters.add(ScanFilter.Builder().setDeviceName(it).build()) }
         val scanSettings = ScanSettings.Builder().setScanMode(powerMode).build()
         bluetoothAdapter?.bluetoothLeScanner?.startScan(filters, scanSettings, scanCallbackApi21)
     }
@@ -203,7 +204,7 @@ class NuimoDiscoveryManager(context: Context) {
 
     private fun onDeviceFound(device: BluetoothDevice) {
         when {
-            device.name != nuimoDeviceName                             -> return
+            !nuimoDeviceNames.contains(device.name)                    -> return
             discoveredControllers.any { it.address == device.address } -> return
         }
         with(NuimoBluetoothController(device, context)) {
