@@ -411,10 +411,10 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
                     1 to NuimoGesture.SWIPE_RIGHT,
                     2 to NuimoGesture.SWIPE_UP,
                     3 to NuimoGesture.SWIPE_DOWN,
-                    4 to NuimoGesture.TOUCH_LEFT_RELEASE,
-                    5 to NuimoGesture.TOUCH_RIGHT_RELEASE,
-                    6 to NuimoGesture.TOUCH_TOP_RELEASE,
-                    7 to NuimoGesture.TOUCH_BOTTOM_RELEASE
+                    4 to NuimoGesture.TOUCH_LEFT,
+                    5 to NuimoGesture.TOUCH_RIGHT,
+                    6 to NuimoGesture.TOUCH_TOP,
+                    7 to NuimoGesture.TOUCH_BOTTOM
                 )[getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)]
             return if (gesture != null) NuimoGestureEvent(gesture, 0) else null
         }
