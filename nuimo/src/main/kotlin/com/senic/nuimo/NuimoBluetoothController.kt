@@ -11,7 +11,6 @@ import android.bluetooth.*
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.support.annotation.CheckResult
 import android.util.Log
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -380,8 +379,8 @@ fun NuimoLedMatrix.gattBytes(): ByteArray {
 }
 
 private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
-    var chunks = java.util.ArrayList<List<Boolean>>(size / n + 1)
-    var chunk = ArrayList<Boolean>(n)
+    val chunks = java.util.ArrayList<List<Boolean>>(size / n + 1)
+    val chunk = ArrayList<Boolean>(n)
     var i = n
     forEach {
         chunk.add(it)
@@ -398,7 +397,7 @@ private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
 private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent? {
     return when (uuid) {
         SENSOR_BUTTON_CHARACTERISTIC_UUID -> {
-            var value = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
+            val value = getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
             return NuimoGestureEvent(if (value == 1) NuimoGesture.BUTTON_PRESS else NuimoGesture.BUTTON_RELEASE, value)
         }
         SENSOR_ROTATION_CHARACTERISTIC_UUID -> {
