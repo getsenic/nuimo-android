@@ -406,36 +406,17 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
             return NuimoGestureEvent(NuimoGesture.ROTATE, value)
         }
         SENSOR_TOUCH_CHARACTERISTIC_UUID -> {
-            if (value.size == 1) {
-                val gesture = hashMapOf(
-                        0 to NuimoGesture.SWIPE_LEFT,
-                        1 to NuimoGesture.SWIPE_RIGHT,
-                        2 to NuimoGesture.SWIPE_UP,
-                        3 to NuimoGesture.SWIPE_DOWN
-                    )[getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)]
-                return if (gesture != null) NuimoGestureEvent(gesture, 0) else null
-            }
-            else {
-                //TODO: Remove legacy code when we have no Nuimos with old firmware any more
-                val button = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 0) ?: 0
-                val event = getIntValue(BluetoothGattCharacteristic.FORMAT_SINT16, 2) ?: 0
-                for (i in 0..7) {
-                    if (1.shl(i).and(button) == 0) { continue }
-                    val touchDownGesture = GATT_TOUCH_DOWN_GESTURES[i / 2]
-                    val eventGesture =
-                            when (event) {
-                                1 -> touchDownGesture
-                                2 -> touchDownGesture.touchReleaseGesture()
-                                3 -> null //TODO: Do we need to handle double touch gestures here as well?
-                                4 -> touchDownGesture.swipeGesture()
-                                else -> null
-                            }
-                    if (eventGesture != null) {
-                        return NuimoGestureEvent(eventGesture, i)
-                    }
-                }
-                return null
-            }
+            val gesture = hashMapOf(
+                    0 to NuimoGesture.SWIPE_LEFT,
+                    1 to NuimoGesture.SWIPE_RIGHT,
+                    2 to NuimoGesture.SWIPE_UP,
+                    3 to NuimoGesture.SWIPE_DOWN,
+                    4 to NuimoGesture.TOUCH_LEFT,
+                    5 to NuimoGesture.TOUCH_RIGHT,
+                    6 to NuimoGesture.TOUCH_TOP,
+                    7 to NuimoGesture.TOUCH_BOTTOM
+                )[getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)]
+            return if (gesture != null) NuimoGestureEvent(gesture, 0) else null
         }
         SENSOR_FLY_CHARACTERISTIC_UUID -> {
             if (value.size < 2) return null
@@ -450,36 +431,6 @@ private fun BluetoothGattCharacteristic.toNuimoGestureEvent(): NuimoGestureEvent
             return if (gesture != null) NuimoGestureEvent(gesture, if (gesture == NuimoGesture.FLY_UP_DOWN) { distance } else { 0 }) else null
         }
         else -> null
-    }
-}
-
-private val GATT_TOUCH_DOWN_GESTURES = arrayOf(NuimoGesture.TOUCH_LEFT_DOWN, NuimoGesture.TOUCH_TOP_DOWN, NuimoGesture.TOUCH_RIGHT_DOWN, NuimoGesture.TOUCH_BOTTOM_DOWN)
-
-fun NuimoGesture.touchReleaseGesture(): NuimoGesture? {
-    return when(this) {
-        NuimoGesture.TOUCH_LEFT_DOWN      -> NuimoGesture.TOUCH_LEFT_RELEASE
-        NuimoGesture.TOUCH_LEFT_RELEASE   -> NuimoGesture.TOUCH_LEFT_RELEASE
-        NuimoGesture.TOUCH_RIGHT_DOWN     -> NuimoGesture.TOUCH_RIGHT_RELEASE
-        NuimoGesture.TOUCH_RIGHT_RELEASE  -> NuimoGesture.TOUCH_RIGHT_RELEASE
-        NuimoGesture.TOUCH_TOP_DOWN       -> NuimoGesture.TOUCH_TOP_RELEASE
-        NuimoGesture.TOUCH_TOP_RELEASE    -> NuimoGesture.TOUCH_TOP_RELEASE
-        NuimoGesture.TOUCH_BOTTOM_DOWN    -> NuimoGesture.TOUCH_BOTTOM_RELEASE
-        NuimoGesture.TOUCH_BOTTOM_RELEASE -> NuimoGesture.TOUCH_BOTTOM_RELEASE
-        else                              -> null
-    }
-}
-
-fun NuimoGesture.swipeGesture(): NuimoGesture? {
-    return when(this) {
-        NuimoGesture.TOUCH_LEFT_DOWN      -> NuimoGesture.SWIPE_LEFT
-        NuimoGesture.TOUCH_LEFT_RELEASE   -> NuimoGesture.SWIPE_LEFT
-        NuimoGesture.TOUCH_RIGHT_DOWN     -> NuimoGesture.SWIPE_RIGHT
-        NuimoGesture.TOUCH_RIGHT_RELEASE  -> NuimoGesture.SWIPE_RIGHT
-        NuimoGesture.TOUCH_TOP_DOWN       -> NuimoGesture.SWIPE_UP
-        NuimoGesture.TOUCH_TOP_RELEASE    -> NuimoGesture.SWIPE_UP
-        NuimoGesture.TOUCH_BOTTOM_DOWN    -> NuimoGesture.SWIPE_DOWN
-        NuimoGesture.TOUCH_BOTTOM_RELEASE -> NuimoGesture.SWIPE_DOWN
-        else                              -> null
     }
 }
 
