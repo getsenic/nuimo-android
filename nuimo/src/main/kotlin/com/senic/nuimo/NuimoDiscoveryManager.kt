@@ -21,12 +21,14 @@ import android.location.LocationManager
 import android.os.Build
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
-import java.util.ArrayList
+import android.text.format.DateUtils
+import java.util.*
 
 //TODO: Android requires the search to be stopped before connecting to any device. That requirement should be handled transparently by this library!
 class NuimoDiscoveryManager(context: Context) {
     companion object {
         const val PERMISSIONS_REQUEST_CODE = 235
+        const val LOST_CONTROLLER_TIMEOUT = 7 * DateUtils.SECOND_IN_MILLIS
     }
 
     private val context: Context = if (context is Activity) { context.applicationContext } else { context }
@@ -36,8 +38,9 @@ class NuimoDiscoveryManager(context: Context) {
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
     private var shouldStartDiscoveryWhenPermissionsGranted = false
     private var scanPowerModeWhenPermissionsGranted = ScanSettings.SCAN_MODE_LOW_POWER
-    private val discoveredControllers = ArrayList<NuimoController>()
+    private val discoveredControllers = ArrayList<DiscoveredNuimoController>()
     private val nuimoDeviceNames = listOfNotNull("Nuimo", System.getProperty("other_nuimo_device_name", null))
+    private var checkLostControllersTimer: Timer? = null
 
     fun addDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
         discoveryListeners.add(discoveryListener)
@@ -79,6 +82,9 @@ class NuimoDiscoveryManager(context: Context) {
 
         if (bluetoothAdapter?.state != BluetoothAdapter.STATE_ON) return false
 
+        checkLostControllersTimer?.cancel()
+        checkLostControllersTimer = Timer()
+        checkLostControllersTimer?.schedule(CheckLostControllersTask(discoveredControllers, discoveryListeners), DateUtils.SECOND_IN_MILLIS, DateUtils.SECOND_IN_MILLIS)
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             if ((android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) && !checkLocationServiceEnabled()) { return false }
@@ -106,6 +112,8 @@ class NuimoDiscoveryManager(context: Context) {
 
     fun stopDiscovery() {
         shouldStartDiscoveryWhenPermissionsGranted = false
+        checkLostControllersTimer?.cancel()
+        checkLostControllersTimer = null
 
         if (bluetoothAdapter?.state != BluetoothAdapter.STATE_ON) return
 
@@ -203,12 +211,16 @@ class NuimoDiscoveryManager(context: Context) {
     }
 
     private fun onDeviceFound(device: BluetoothDevice) {
-        when {
-            !nuimoDeviceNames.contains(device.name)                    -> return
-            discoveredControllers.any { it.address == device.address } -> return
+        if (!nuimoDeviceNames.contains(device.name)) return
+
+        val discoveredController = discoveredControllers.find { it.nuimoController.address == device.address }
+        if (discoveredController != null) {
+            discoveredController.updateDiscoveryTimestamp()
+            return
         }
+
         with(NuimoBluetoothController(device, context)) {
-            discoveredControllers.add(this)
+            discoveredControllers.add(DiscoveredNuimoController(this))
             discoveryListeners.forEach { it.onDiscoverNuimoController(this) }
         }
     }
@@ -228,6 +240,20 @@ class NuimoDiscoveryManager(context: Context) {
 
 interface NuimoDiscoveryListener {
     fun onDiscoverNuimoController(nuimoController: NuimoController)
+    fun onLoseNuimoController(nuimoController: NuimoController)
+}
+
+private class DiscoveredNuimoController(var nuimoController: NuimoController) {
+    var discoveryTimestamp = System.currentTimeMillis()
+    fun updateDiscoveryTimestamp() { discoveryTimestamp = System.currentTimeMillis() }
+}
+
+private class CheckLostControllersTask(var discoveredControllers: ArrayList<DiscoveredNuimoController>, var discoveryListeners: ArrayList<NuimoDiscoveryListener>) : TimerTask() {
+    override fun run() {
+        val lostControllers = discoveredControllers.filter { System.currentTimeMillis() - it.discoveryTimestamp >= NuimoDiscoveryManager.LOST_CONTROLLER_TIMEOUT }
+        discoveredControllers.removeAll(lostControllers)
+        lostControllers.forEach { lostController -> discoveryListeners.forEach { listener -> listener.onLoseNuimoController(lostController.nuimoController) } }
+    }
 }
 
 private fun withCatchNullPointerException(tryBlock: () -> Unit) {
