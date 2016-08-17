@@ -31,16 +31,14 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
     }
 
     fun testDiscoveryManagerShouldSendOnlyOneDiscoveryEventForTheSameDevice() {
-        var discoveredDevices = HashSet<String>()
-        discoverAndWait(60.0) { discoveryManager, nuimoController, completed ->
+        val discoveredDevices = HashSet<String>()
+        discoverAndWait(30.0) { discoveryManager, nuimoController, completed ->
             if (discoveredDevices.contains(nuimoController.address)) {
-                completed()
+                fail("Discovery manager must report a device discovery for each device only once")
             }
             else {
                 discoveredDevices.add(nuimoController.address)
             }
-        }.onComplete {
-            fail("Discovery manager must report a device discovery for each device only once")
         }
     }
 
@@ -73,11 +71,9 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
         var deviceFound = false
         //TODO: This test fails when there are two Nuimos nearby
         discoverAndWait(30.0) { discovery, nuimoController, completed ->
-            if (deviceFound) { completed() }
+            if (deviceFound) { fail("Discovery should stop discovering devices when stopped") }
             deviceFound = true
             discovery.stopDiscovery()
-        }.onComplete {
-            fail("Discovery should stop discovering devices when stopped")
         }
     }
 
