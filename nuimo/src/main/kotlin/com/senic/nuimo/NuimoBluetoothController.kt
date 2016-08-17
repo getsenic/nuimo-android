@@ -101,6 +101,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
 
                     val previousConnectionState = connectionState
                     connectionState = NuimoConnectionState.DISCONNECTED
+                    disconnect()
 
                     if (previousConnectionState == NuimoConnectionState.CONNECTING) {
                         notifyListeners { it.onFailToConnect() }
@@ -110,8 +111,6 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                         //TODO: in case of CONNECTED we might need to pass an error code
                         notifyListeners { it.onDisconnect() }
                     }
-
-                    disconnect()
                 }
                 status != BluetoothGatt.GATT_SUCCESS -> disconnect() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
                 newState == BluetoothProfile.STATE_CONNECTED -> discoverServices()
