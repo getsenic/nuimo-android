@@ -31,16 +31,39 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
     }
 
     fun testDiscoveryManagerShouldSendOnlyOneDiscoveryEventForTheSameDevice() {
-        var discoveredDevices = HashSet<String>()
-        discoverAndWait(60.0) { discoveryManager, nuimoController, completed ->
+        val discoveredDevices = HashSet<String>()
+        discoverAndWait(30.0) { discoveryManager, nuimoController, completed ->
             if (discoveredDevices.contains(nuimoController.address)) {
-                completed()
+                fail("Discovery manager must report a device discovery for each device only once")
             }
             else {
                 discoveredDevices.add(nuimoController.address)
             }
-        }.onComplete {
-            fail("Discovery manager must report a device discovery for each device only once")
+        }
+    }
+
+    fun testDiscoveryManagerShouldSendLoseEventWhenBluetoothControllerIsLost() {
+        val discoveredDevices = HashSet<String>()
+        var listenerAdded = false
+        discoverAndWait(30.0) { discoveryManager, nuimoController, completed ->
+            if (!listenerAdded) {
+                discoveryManager.addDiscoveryListener(object: NuimoDiscoveryListener {
+                    override fun onDiscoverNuimoController(nuimoController: NuimoController) {
+                    }
+
+                    override fun onLoseNuimoController(nuimoController: NuimoController) {
+                        if (discoveredDevices.contains(nuimoController.address)) {
+                            completed()
+                        }
+                    }
+                })
+                listenerAdded = true
+                println("Nuimo discovered. Now turn it off")
+            }
+
+            discoveredDevices.add(nuimoController.address)
+        }.onTimeout {
+            fail("Discovery manager must discover a nuimo controller and report a device lost event")
         }
     }
 
@@ -48,11 +71,9 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
         var deviceFound = false
         //TODO: This test fails when there are two Nuimos nearby
         discoverAndWait(30.0) { discovery, nuimoController, completed ->
-            if (deviceFound) { completed() }
+            if (deviceFound) { fail("Discovery should stop discovering devices when stopped") }
             deviceFound = true
             discovery.stopDiscovery()
-        }.onComplete {
-            fail("Discovery should stop discovering devices when stopped")
         }
     }
 
@@ -91,6 +112,9 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
                     timeoutTimer.cancel()
                     waitLock.release()
                 })
+            }
+
+            override fun onLoseNuimoController(nuimoController: NuimoController) {
             }
         })
         val started = discovery.startDiscovery()
