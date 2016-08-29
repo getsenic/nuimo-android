@@ -26,7 +26,6 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
     private var matrixWriter: LedMatrixWriter? = null
-
     override fun connect() {
         if (connectionState != NuimoConnectionState.DISCONNECTED) { return }
 
@@ -56,6 +55,19 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         reset()
+    }
+
+    fun supportsRebootToDfuMode(): Boolean {
+        return connectionState == NuimoConnectionState.CONNECTED && gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID) != null
+    }
+
+    fun rebootToDfuMode(): Boolean {
+        if (!supportsRebootToDfuMode()) return false
+        val rebootToDfuModeCharacteristic = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID) ?: null
+        rebootToDfuModeCharacteristic?.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        rebootToDfuModeCharacteristic?.value = byteArrayOf(0x01)
+        writeQueue.push { gatt?.writeCharacteristic(rebootToDfuModeCharacteristic) }
+        return rebootToDfuModeCharacteristic != null
     }
 
     private fun refreshGatt(): Boolean {
@@ -133,6 +145,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                     if (matrixWriter?.onWrite() ?: false) {
                         notifyListeners { it.onLedMatrixWrite() }
                     }
+                }
+                REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID -> {
+                    disconnect()
                 }
             }
         }
@@ -345,6 +360,7 @@ private val SENSOR_FLY_CHARACTERISTIC_UUID         = UUID.fromString("f29b1526-c
 private val SENSOR_TOUCH_CHARACTERISTIC_UUID       = UUID.fromString("f29b1527-cb19-40f3-be5c-7241ecb82fd2")
 private val SENSOR_ROTATION_CHARACTERISTIC_UUID    = UUID.fromString("f29b1528-cb19-40f3-be5c-7241ecb82fd2")
 private val SENSOR_BUTTON_CHARACTERISTIC_UUID      = UUID.fromString("f29b1529-cb19-40f3-be5c-7241ecb82fd2")
+private val REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID = UUID.fromString("f29b152a-cb19-40f3-be5c-7241ecb82fd2")
 
 val NUIMO_SERVICE_UUIDS = arrayOf(
         BATTERY_SERVICE_UUID,
