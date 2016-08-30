@@ -16,6 +16,8 @@ import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
+    val supportsRebootToDfuMode: Boolean
+        get() = rebootToDfuModeCharacteristic != null
     private val device = bluetoothDevice
     private val context = context
     private var gattConnected = false
@@ -26,6 +28,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
     private var matrixWriter: LedMatrixWriter? = null
+    private val rebootToDfuModeCharacteristic: BluetoothGattCharacteristic?
+        get() = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID)
+
     override fun connect() {
         if (connectionState != NuimoConnectionState.DISCONNECTED) { return }
 
@@ -57,17 +62,12 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         reset()
     }
 
-    fun supportsRebootToDfuMode(): Boolean {
-        return connectionState == NuimoConnectionState.CONNECTED && gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID) != null
-    }
-
     fun rebootToDfuMode(): Boolean {
-        if (!supportsRebootToDfuMode()) return false
-        val rebootToDfuModeCharacteristic = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID) ?: null
-        rebootToDfuModeCharacteristic?.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-        rebootToDfuModeCharacteristic?.value = byteArrayOf(0x01)
+        val rebootToDfuModeCharacteristic = this.rebootToDfuModeCharacteristic ?: return false
+        rebootToDfuModeCharacteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        rebootToDfuModeCharacteristic.value = byteArrayOf(0x01)
         writeQueue.push { gatt?.writeCharacteristic(rebootToDfuModeCharacteristic) }
-        return rebootToDfuModeCharacteristic != null
+        return true
     }
 
     private fun refreshGatt(): Boolean {
@@ -224,7 +224,10 @@ private class WriteQueue {
         return !isIdle
     }
 
-    fun clear() = queue.clear()
+    fun clear() {
+        queue.clear()
+        isIdle = true
+    }
 
     private fun performWriteRequest(request: () -> Unit) {
         mainHandler.post { request() }
