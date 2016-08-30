@@ -16,6 +16,8 @@ import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
+    val supportsRebootToDfuMode: Boolean
+        get() = rebootToDfuModeCharacteristic != null
     private val device = bluetoothDevice
     private val context = context
     private var gattConnected = false
@@ -26,6 +28,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
     private var matrixWriter: LedMatrixWriter? = null
+    private val rebootToDfuModeCharacteristic: BluetoothGattCharacteristic?
+        get() = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID)
 
     override fun connect() {
         if (connectionState != NuimoConnectionState.DISCONNECTED) { return }
@@ -56,6 +60,14 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         reset()
+    }
+
+    fun rebootToDfuMode(): Boolean {
+        val rebootToDfuModeCharacteristic = this.rebootToDfuModeCharacteristic ?: return false
+        rebootToDfuModeCharacteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        rebootToDfuModeCharacteristic.value = byteArrayOf(0x01)
+        writeQueue.push { gatt?.writeCharacteristic(rebootToDfuModeCharacteristic) }
+        return true
     }
 
     private fun refreshGatt(): Boolean {
@@ -134,6 +146,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                         notifyListeners { it.onLedMatrixWrite() }
                     }
                 }
+                REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID -> {
+                    disconnect()
+                }
             }
         }
 
@@ -209,7 +224,10 @@ private class WriteQueue {
         return !isIdle
     }
 
-    fun clear() = queue.clear()
+    fun clear() {
+        queue.clear()
+        isIdle = true
+    }
 
     private fun performWriteRequest(request: () -> Unit) {
         mainHandler.post { request() }
@@ -345,6 +363,7 @@ private val SENSOR_FLY_CHARACTERISTIC_UUID         = UUID.fromString("f29b1526-c
 private val SENSOR_TOUCH_CHARACTERISTIC_UUID       = UUID.fromString("f29b1527-cb19-40f3-be5c-7241ecb82fd2")
 private val SENSOR_ROTATION_CHARACTERISTIC_UUID    = UUID.fromString("f29b1528-cb19-40f3-be5c-7241ecb82fd2")
 private val SENSOR_BUTTON_CHARACTERISTIC_UUID      = UUID.fromString("f29b1529-cb19-40f3-be5c-7241ecb82fd2")
+private val REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID = UUID.fromString("f29b152a-cb19-40f3-be5c-7241ecb82fd2")
 
 val NUIMO_SERVICE_UUIDS = arrayOf(
         BATTERY_SERVICE_UUID,
