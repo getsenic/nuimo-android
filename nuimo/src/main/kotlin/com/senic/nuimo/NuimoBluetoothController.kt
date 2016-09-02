@@ -18,6 +18,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
     val supportsRebootToDfuMode: Boolean
         get() = rebootToDfuModeCharacteristic != null
+    val supportsFlyGestureCalibration: Boolean
+        get() = flyGestureCalibrationCharacteristic != null
     private val device = bluetoothDevice
     private val context = context
     private var gattConnected = false
@@ -30,6 +32,8 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private var matrixWriter: LedMatrixWriter? = null
     private val rebootToDfuModeCharacteristic: BluetoothGattCharacteristic?
         get() = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID)
+    private val flyGestureCalibrationCharacteristic: BluetoothGattCharacteristic?
+        get() = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(FLY_GESTURE_CALIBRATION_CHARACTERISTIC_UUID)
 
     override fun connect() {
         if (connectionState != NuimoConnectionState.DISCONNECTED) { return }
@@ -67,6 +71,14 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         rebootToDfuModeCharacteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         rebootToDfuModeCharacteristic.value = byteArrayOf(0x01)
         writeQueue.push { gatt?.writeCharacteristic(rebootToDfuModeCharacteristic) }
+        return true
+    }
+
+    fun calibrateFlyGesture(): Boolean {
+        val flyGestureCalibrationCharacteristic = this.flyGestureCalibrationCharacteristic ?: return false
+        flyGestureCalibrationCharacteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        flyGestureCalibrationCharacteristic.value = byteArrayOf(0x01)
+        writeQueue.push { gatt?.writeCharacteristic(flyGestureCalibrationCharacteristic) }
         return true
     }
 
@@ -148,6 +160,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 }
                 REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID -> {
                     disconnect()
+                }
+                FLY_GESTURE_CALIBRATION_CHARACTERISTIC_UUID -> {
+                    writeQueue.next()
                 }
             }
         }
@@ -364,6 +379,7 @@ private val SENSOR_TOUCH_CHARACTERISTIC_UUID       = UUID.fromString("f29b1527-c
 private val SENSOR_ROTATION_CHARACTERISTIC_UUID    = UUID.fromString("f29b1528-cb19-40f3-be5c-7241ecb82fd2")
 private val SENSOR_BUTTON_CHARACTERISTIC_UUID      = UUID.fromString("f29b1529-cb19-40f3-be5c-7241ecb82fd2")
 private val REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID = UUID.fromString("f29b152a-cb19-40f3-be5c-7241ecb82fd2")
+private val FLY_GESTURE_CALIBRATION_CHARACTERISTIC_UUID = UUID.fromString("f29b152c-cb19-40f3-be5c-7241ecb82fd2")
 
 val NUIMO_SERVICE_UUIDS = arrayOf(
         BATTERY_SERVICE_UUID,
