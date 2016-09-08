@@ -70,7 +70,7 @@ interface NuimoControllerListener {
     fun onLedMatrixWrite() {}
     fun onGestureEvent(event: NuimoGestureEvent) {}
     fun onBatteryPercentageChange(batteryPercentage: Int) {}
-    fun onFirmwareVersionRead(firmwareVersion: String) {}
+    fun onInformationRead(hardwareVersion: String?, firmwareVersion: String?, color: String?)
 }
 
 abstract class BaseNuimoControllerListener: NuimoControllerListener {
@@ -79,5 +79,5 @@ abstract class BaseNuimoControllerListener: NuimoControllerListener {
     override fun onLedMatrixWrite() {}
     override fun onGestureEvent(event: NuimoGestureEvent) {}
     override fun onBatteryPercentageChange(batteryPercentage: Int) {}
-    override fun onFirmwareVersionRead(firmwareVersion: String) {}
+    override fun onInformationRead(hardwareVersion: String?, firmwareVersion: String?, color: String?) {}
 }
