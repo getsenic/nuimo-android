@@ -30,6 +30,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
     private var matrixWriter: LedMatrixWriter? = null
+    private var hardwareVersion: String? = null
+    private var firmwareVersion: String? = null
+    private var color: String? = null
     private val rebootToDfuModeCharacteristic: BluetoothGattCharacteristic?
         get() = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID)
     private val flyGestureCalibrationCharacteristic: BluetoothGattCharacteristic?
@@ -175,9 +178,17 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                     val batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: -1
                     notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
                 }
+                HARDWARE_REVISION_CHARACTERISTIC_UUID -> {
+                    hardwareVersion = characteristic.getStringValue(0)
+                    if (hardwareVersion?.length ?: 0 <= 2) hardwareVersion = null  // For old firmware we ignore the 19 string; It should be "MAJOR.MINOR"
+                }
                 FIRMWARE_VERSION_CHARACTERISTIC_UUID -> {
-                    val firmwareVersion = characteristic.getStringValue(0)
-                    if (firmwareVersion != null) notifyListeners { it.onFirmwareVersionRead(firmwareVersion) }
+                    firmwareVersion = characteristic.getStringValue(0)
+                }
+                MODEL_NUMBER_CHARACTERISTIC_UUID -> {
+                    color = characteristic.getStringValue(0)
+                    if (color?.length ?: 0 <= 1) color = null // For old firmware we ignore the 0 character; It should be a string of at least 2 characters
+                    notifyListeners { it.onInformationRead(hardwareVersion, firmwareVersion, color) }
                 }
             }
         }
@@ -199,7 +210,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 gattConnected = true
                 connectionState = NuimoConnectionState.CONNECTED
                 readCharacteristic(BATTERY_SERVICE_UUID, BATTERY_CHARACTERISTIC_UUID)
+                readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, HARDWARE_REVISION_CHARACTERISTIC_UUID)
                 readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, FIRMWARE_VERSION_CHARACTERISTIC_UUID)
+                readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, MODEL_NUMBER_CHARACTERISTIC_UUID)
                 notifyListeners { it.onConnect() }
             }
         }
@@ -369,7 +382,9 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
 private val BATTERY_SERVICE_UUID                   = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
 private val BATTERY_CHARACTERISTIC_UUID            = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
 private val DEVICE_INFORMATION_SERVICE_UUID        = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
+private val HARDWARE_REVISION_CHARACTERISTIC_UUID  = UUID.fromString("00002a27-0000-1000-8000-00805f9b34fb")
 private val FIRMWARE_VERSION_CHARACTERISTIC_UUID   = UUID.fromString("00002a26-0000-1000-8000-00805f9b34fb")
+private val MODEL_NUMBER_CHARACTERISTIC_UUID       = UUID.fromString("00002a24-0000-1000-8000-00805f9b34fb")
 private val DEVICE_INFORMATION_CHARACTERISTIC_UUID = UUID.fromString("00002a29-0000-1000-8000-00805f9b34fb")
 private val LED_MATRIX_SERVICE_UUID                = UUID.fromString("f29b1523-cb19-40f3-be5c-7241ecb82fd1")
 private val LED_MATRIX_CHARACTERISTIC_UUID         = UUID.fromString("f29b1524-cb19-40f3-be5c-7241ecb82fd1")
