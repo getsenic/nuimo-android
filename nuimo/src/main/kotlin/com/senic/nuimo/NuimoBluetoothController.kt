@@ -171,7 +171,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            writeQueue.next()
+            if (!(matrixWriter?.onWrite() ?: false)) writeQueue.next()
 
             when (characteristic.uuid) {
                 BATTERY_CHARACTERISTIC_UUID -> {
