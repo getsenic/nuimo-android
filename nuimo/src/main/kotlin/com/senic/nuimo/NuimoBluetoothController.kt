@@ -15,24 +15,20 @@ import android.util.Log
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
-class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
+class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val context: Context): NuimoController(bluetoothDevice.address) {
     val supportsRebootToDfuMode: Boolean
         get() = rebootToDfuModeCharacteristic != null
     val supportsFlyGestureCalibration: Boolean
         get() = flyGestureCalibrationCharacteristic != null
     private val device = bluetoothDevice
-    private val context = context
     private var gattConnected = false
     private var gatt: BluetoothGatt? = null
     // At least for some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
     //TODO: According to another SO answer, we just need another thread. So don't use main thread! See http://stackoverflow.com/questions/17870189/android-4-3-bluetooth-low-energy-unstable
     //TODO: Furthermore, the post says, it's only necessary for the connectGatt() method. Try it out!
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var writeQueue = WriteQueue()
+    private var gattCommandQueue = GattCommandQueue()
     private var matrixWriter: LedMatrixWriter? = null
-    private var hardwareVersion: String? = null
-    private var firmwareVersion: String? = null
-    private var color: String? = null
     private val rebootToDfuModeCharacteristic: BluetoothGattCharacteristic?
         get() = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID)
     private val flyGestureCalibrationCharacteristic: BluetoothGattCharacteristic?
@@ -41,13 +37,12 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     override fun connect() {
         if (connectionState != NuimoConnectionState.DISCONNECTED) { return }
 
-        reset()
-
         connectionState = NuimoConnectionState.CONNECTING
 
         mainHandler.post {
             // If there is still a reference to gatt we should close it
             gatt?.close()
+            reset()
             gatt = device.connectGatt(context, false, GattCallback())
             // TODO: if there are problems and the following result is false we should call gatt.disconnect() and try the connection again. See http://stackoverflow.com/a/34544263/91226
             refreshGatt()
@@ -73,7 +68,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         val rebootToDfuModeCharacteristic = this.rebootToDfuModeCharacteristic ?: return false
         rebootToDfuModeCharacteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         rebootToDfuModeCharacteristic.value = byteArrayOf(0x01)
-        writeQueue.push { gatt?.writeCharacteristic(rebootToDfuModeCharacteristic) }
+        gattCommandQueue.push { gatt?.writeCharacteristic(rebootToDfuModeCharacteristic) }
         return true
     }
 
@@ -81,7 +76,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         val flyGestureCalibrationCharacteristic = this.flyGestureCalibrationCharacteristic ?: return false
         flyGestureCalibrationCharacteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         flyGestureCalibrationCharacteristic.value = byteArrayOf(0x01)
-        writeQueue.push { gatt?.writeCharacteristic(flyGestureCalibrationCharacteristic) }
+        gattCommandQueue.push { gatt?.writeCharacteristic(flyGestureCalibrationCharacteristic) }
         return true
     }
 
@@ -98,15 +93,16 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     }
 
     private fun reset() {
+        batteryPercentage = null
         gatt = null
         gattConnected = false
-        writeQueue.clear()
+        gattCommandQueue.clear()
         matrixWriter = null
     }
 
     private fun readCharacteristic(serviceUUID: UUID, characteristicUUID: UUID) {
         val characteristic = gatt?.getService(serviceUUID)?.getCharacteristic(characteristicUUID) ?: return
-        writeQueue.push { gatt?.readCharacteristic(characteristic) }
+        gattCommandQueue.push { gatt?.readCharacteristic(characteristic) }
     }
 
     private fun discoverServices() {
@@ -147,9 +143,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             gatt.services?.flatMap { it.characteristics }?.forEach {
                 if (LED_MATRIX_CHARACTERISTIC_UUID == it.uuid) {
-                    matrixWriter = LedMatrixWriter(gatt, it, writeQueue)
+                    matrixWriter = LedMatrixWriter(gatt, it, gattCommandQueue)
                 } else if (CHARACTERISTIC_NOTIFICATION_UUIDS.contains(it.uuid)) {
-                    writeQueue.push { if (!gatt.setCharacteristicNotification2(it, true)) disconnect() }
+                    gattCommandQueue.push { if (!gatt.setCharacteristicNotification2(it, true)) disconnect() }
                 }
             }
         }
@@ -157,7 +153,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             when (characteristic.uuid) {
                 LED_MATRIX_CHARACTERISTIC_UUID -> {
-                    if (matrixWriter?.onWrite() ?: false) {
+                    if (matrixWriter?.next() ?: false) {
                         notifyListeners { it.onLedMatrixWrite() }
                     }
                 }
@@ -165,13 +161,13 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                     disconnect()
                 }
                 FLY_GESTURE_CALIBRATION_CHARACTERISTIC_UUID -> {
-                    writeQueue.next()
+                    gattCommandQueue.next()
                 }
             }
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            writeQueue.next()
+            if (!(matrixWriter?.next() ?: false)) gattCommandQueue.next()
 
             when (characteristic.uuid) {
                 BATTERY_CHARACTERISTIC_UUID -> {
@@ -188,15 +184,15 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 MODEL_NUMBER_CHARACTERISTIC_UUID -> {
                     color = characteristic.getStringValue(0)
                     if (color?.length ?: 0 <= 1) color = null // For old firmware we ignore the 0 character; It should be a string of at least 2 characters
-                    notifyListeners { it.onInformationRead(hardwareVersion, firmwareVersion, color) }
+                    notifyListeners { it.onConnect() }
                 }
             }
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             if (characteristic.uuid.equals(BATTERY_CHARACTERISTIC_UUID)) {
-                val batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
-                notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
+                batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
+                notifyListeners { it.onBatteryPercentageChange(batteryPercentage!!) }
             }
             else {
                 val event = characteristic.toNuimoGestureEvent() ?: return
@@ -205,7 +201,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
-            if (!writeQueue.next() && !gattConnected) {
+            if (!gattCommandQueue.next() && !gattConnected) {
                 // When the last characteristic descriptor has been written, then Nuimo is successfully connected
                 gattConnected = true
                 connectionState = NuimoConnectionState.CONNECTED
@@ -213,7 +209,6 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, HARDWARE_REVISION_CHARACTERISTIC_UUID)
                 readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, FIRMWARE_VERSION_CHARACTERISTIC_UUID)
                 readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, MODEL_NUMBER_CHARACTERISTIC_UUID)
-                notifyListeners { it.onConnect() }
             }
         }
     }
@@ -229,7 +224,7 @@ enum class NuimoConnectionState {
 /**
  * All write requests to Bluetooth GATT must be happen serialized. This said, write requests must not be invoked before the response of the previous write request is received.
  */
-private class WriteQueue {
+private class GattCommandQueue {
     var isIdle = true
         private set
     private var queue = ConcurrentLinkedQueue<() -> Unit>()
@@ -266,10 +261,7 @@ private class WriteQueue {
  * Send LED matrices to the controller. When the writer receives write commands faster than the controller can actually handle
  * (thus write commands come in before write responses are received), it will send only the matrix of the very last write command.
  */
-private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: BluetoothGattCharacteristic, writeQueue: WriteQueue) {
-    private var gatt = gatt
-    private var matrixCharacteristic = matrixCharacteristic
-    private var writeQueue = writeQueue
+private class LedMatrixWriter(private val gatt: BluetoothGatt, private val matrixCharacteristic: BluetoothGattCharacteristic, private val gattCommandQueue: GattCommandQueue) {
     private var currentMatrix: NuimoLedMatrix? = null
     private var currentMatrixDisplayIntervalSecs = 0.0
     private var currentMatrixWithOnionSkinningFadeIn = false
@@ -299,7 +291,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         currentMatrixDisplayIntervalSecs     = displayInterval
         currentMatrixWithOnionSkinningFadeIn = withOnionSkinningFadeIn
 
-        when (writeQueue.isIdle || !writesWithResponse) {
+        when (gattCommandQueue.isIdle || !writesWithResponse) {
             true  -> writeNow(writesWithResponse)
             false -> writeMatrixOnWriteResponseReceived = true
         }
@@ -332,7 +324,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
         }
 
         when (withResponse) {
-            true  -> writeQueue.push(writeCommand)
+            true  -> gattCommandQueue.push(writeCommand)
             false -> writeCommand()
         }
 
@@ -344,13 +336,13 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     /**
      * Returns true when it was handling a matrix write response from a "write with response request", otherwise false
      */
-    fun onWrite(): Boolean {
+    fun next(): Boolean {
         if (pendingWriteCommandsWithoutResponseCount > 0) {
             pendingWriteCommandsWithoutResponseCount--
             return false
         }
 
-        writeQueue.next()
+        gattCommandQueue.next()
         if (writeMatrixOnWriteResponseReceived) {
             writeMatrixOnWriteResponseReceived = false
             writeNow(true)
@@ -370,7 +362,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
 
             pendingWriteCommandsWithoutResponseCount = 0
 
-            onWrite()
+            next()
         }
     }
 }
