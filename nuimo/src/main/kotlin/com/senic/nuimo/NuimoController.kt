@@ -24,13 +24,13 @@ abstract class NuimoController(address: String) {
 
     var connectionState = NuimoConnectionState.DISCONNECTED
         protected set
-    var batteryPercentage = -1
+    var batteryPercentage: Int? = null
         protected set
-    var firmwareVersion:String? = null
+    var firmwareVersion: String? = null
         protected set
-    var hardwareVersion:String? = null
+    var hardwareVersion: String? = null
         protected set
-    var color:String? = null
+    var color: String? = null
         protected set
 
     private val listeners = ArrayList<NuimoControllerListener>()

@@ -15,13 +15,12 @@ import android.util.Log
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
-class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Context): NuimoController(bluetoothDevice.address) {
+class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val context: Context): NuimoController(bluetoothDevice.address) {
     val supportsRebootToDfuMode: Boolean
         get() = rebootToDfuModeCharacteristic != null
     val supportsFlyGestureCalibration: Boolean
         get() = flyGestureCalibrationCharacteristic != null
     private val device = bluetoothDevice
-    private val context = context
     private var gattConnected = false
     private var gatt: BluetoothGatt? = null
     // At least for some devices such as Samsung S3, S4, all BLE calls must occur from the main thread, see http://stackoverflow.com/questions/20069507/gatt-callback-fails-to-register
@@ -94,9 +93,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     }
 
     private fun reset() {
+        batteryPercentage = null
         gatt = null
         gattConnected = false
-        batteryPercentage = -1
         gattCommandQueue.clear()
         matrixWriter = null
     }
@@ -154,7 +153,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             when (characteristic.uuid) {
                 LED_MATRIX_CHARACTERISTIC_UUID -> {
-                    if (matrixWriter?.onWrite() ?: false) {
+                    if (matrixWriter?.next() ?: false) {
                         notifyListeners { it.onLedMatrixWrite() }
                     }
                 }
@@ -168,7 +167,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            if (!(matrixWriter?.onWrite() ?: false)) gattCommandQueue.next()
+            if (!(matrixWriter?.next() ?: false)) gattCommandQueue.next()
 
             when (characteristic.uuid) {
                 BATTERY_CHARACTERISTIC_UUID -> {
@@ -193,7 +192,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             if (characteristic.uuid.equals(BATTERY_CHARACTERISTIC_UUID)) {
                 batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
-                notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
+                notifyListeners { it.onBatteryPercentageChange(batteryPercentage!!) }
             }
             else {
                 val event = characteristic.toNuimoGestureEvent() ?: return
@@ -262,9 +261,7 @@ private class GattCommandQueue {
  * Send LED matrices to the controller. When the writer receives write commands faster than the controller can actually handle
  * (thus write commands come in before write responses are received), it will send only the matrix of the very last write command.
  */
-private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: BluetoothGattCharacteristic, var gattCommandQueue: GattCommandQueue) {
-    private var gatt = gatt
-    private var matrixCharacteristic = matrixCharacteristic
+private class LedMatrixWriter(private val gatt: BluetoothGatt, private val matrixCharacteristic: BluetoothGattCharacteristic, private val gattCommandQueue: GattCommandQueue) {
     private var currentMatrix: NuimoLedMatrix? = null
     private var currentMatrixDisplayIntervalSecs = 0.0
     private var currentMatrixWithOnionSkinningFadeIn = false
@@ -339,7 +336,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
     /**
      * Returns true when it was handling a matrix write response from a "write with response request", otherwise false
      */
-    fun onWrite(): Boolean {
+    fun next(): Boolean {
         if (pendingWriteCommandsWithoutResponseCount > 0) {
             pendingWriteCommandsWithoutResponseCount--
             return false
@@ -365,7 +362,7 @@ private class LedMatrixWriter(gatt: BluetoothGatt, matrixCharacteristic: Bluetoo
 
             pendingWriteCommandsWithoutResponseCount = 0
 
-            onWrite()
+            next()
         }
     }
 }
