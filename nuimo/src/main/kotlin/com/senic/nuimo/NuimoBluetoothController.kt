@@ -30,9 +30,6 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     private val mainHandler = Handler(Looper.getMainLooper())
     private var writeQueue = WriteQueue()
     private var matrixWriter: LedMatrixWriter? = null
-    private var hardwareVersion: String? = null
-    private var firmwareVersion: String? = null
-    private var color: String? = null
     private val rebootToDfuModeCharacteristic: BluetoothGattCharacteristic?
         get() = gatt?.getService(SENSOR_SERVICE_UUID)?.getCharacteristic(REBOOT_TO_DFU_MODE_CHARACTERISTIC_UUID)
     private val flyGestureCalibrationCharacteristic: BluetoothGattCharacteristic?
@@ -188,14 +185,14 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 MODEL_NUMBER_CHARACTERISTIC_UUID -> {
                     color = characteristic.getStringValue(0)
                     if (color?.length ?: 0 <= 1) color = null // For old firmware we ignore the 0 character; It should be a string of at least 2 characters
-                    notifyListeners { it.onInformationRead(hardwareVersion, firmwareVersion, color) }
+                    notifyListeners { it.onConnect() }
                 }
             }
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             if (characteristic.uuid.equals(BATTERY_CHARACTERISTIC_UUID)) {
-                val batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
+                batteryPercentage = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0) ?: 0
                 notifyListeners { it.onBatteryPercentageChange(batteryPercentage) }
             }
             else {
@@ -213,7 +210,6 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
                 readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, HARDWARE_REVISION_CHARACTERISTIC_UUID)
                 readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, FIRMWARE_VERSION_CHARACTERISTIC_UUID)
                 readCharacteristic(DEVICE_INFORMATION_SERVICE_UUID, MODEL_NUMBER_CHARACTERISTIC_UUID)
-                notifyListeners { it.onConnect() }
             }
         }
     }

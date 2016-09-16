@@ -24,6 +24,14 @@ abstract class NuimoController(address: String) {
 
     var connectionState = NuimoConnectionState.DISCONNECTED
         protected set
+    var batteryPercentage = -1
+        protected set
+    var firmwareVersion:String? = null
+        protected set
+    var hardwareVersion:String? = null
+        protected set
+    var color:String? = null
+        protected set
 
     private val listeners = ArrayList<NuimoControllerListener>()
 
@@ -70,7 +78,6 @@ interface NuimoControllerListener {
     fun onLedMatrixWrite() {}
     fun onGestureEvent(event: NuimoGestureEvent) {}
     fun onBatteryPercentageChange(batteryPercentage: Int) {}
-    fun onInformationRead(hardwareVersion: String?, firmwareVersion: String?, color: String?)
 }
 
 abstract class BaseNuimoControllerListener: NuimoControllerListener {
@@ -79,5 +86,4 @@ abstract class BaseNuimoControllerListener: NuimoControllerListener {
     override fun onLedMatrixWrite() {}
     override fun onGestureEvent(event: NuimoGestureEvent) {}
     override fun onBatteryPercentageChange(batteryPercentage: Int) {}
-    override fun onInformationRead(hardwareVersion: String?, firmwareVersion: String?, color: String?) {}
 }
