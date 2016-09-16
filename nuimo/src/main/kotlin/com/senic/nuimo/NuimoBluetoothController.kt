@@ -38,13 +38,12 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, context: Contex
     override fun connect() {
         if (connectionState != NuimoConnectionState.DISCONNECTED) { return }
 
-        reset()
-
         connectionState = NuimoConnectionState.CONNECTING
 
         mainHandler.post {
             // If there is still a reference to gatt we should close it
             gatt?.close()
+            reset()
             gatt = device.connectGatt(context, false, GattCallback())
             // TODO: if there are problems and the following result is false we should call gatt.disconnect() and try the connection again. See http://stackoverflow.com/a/34544263/91226
             refreshGatt()
