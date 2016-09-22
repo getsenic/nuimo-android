@@ -9,6 +9,7 @@ package com.senic.nuimo
 
 import android.bluetooth.*
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -43,7 +44,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
             // If there is still a reference to gatt we should close it
             gatt?.close()
             reset()
-            gatt = device.connectGatt(context, false, GattCallback())
+            gatt = createConnection()
             // TODO: if there are problems and the following result is false we should call gatt.disconnect() and try the connection again. See http://stackoverflow.com/a/34544263/91226
             refreshGatt()
         }
@@ -90,6 +91,28 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
         }
         catch (e: Exception) { Log.e("NuimoController", "Could not refresh gatt", e) }
         return false
+    }
+
+    private fun createConnection(): BluetoothGatt {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // On Nougat some devices can try to connect using BR/EDR instead of LE, so we set the transport explicitly to LE
+            // https://code.google.com/p/android/issues/detail?id=223104
+            try {
+                val gatt = device.javaClass.getMethod(
+                        "connectGatt",
+                        Context::class.java,
+                        java.lang.Boolean.TYPE,
+                        BluetoothGattCallback::class.java,
+                        Integer.TYPE)?.invoke(device, context, false, GattCallback(), BluetoothDevice.TRANSPORT_LE) ?: null
+
+                if (gatt is BluetoothGatt) {
+                    return gatt
+                }
+            }
+            catch (e: Exception) { Log.e("NuimoController", "Could not select the bluetooth transport", e) }
+        }
+
+        return device.connectGatt(context, false, GattCallback())
     }
 
     private fun reset() {
