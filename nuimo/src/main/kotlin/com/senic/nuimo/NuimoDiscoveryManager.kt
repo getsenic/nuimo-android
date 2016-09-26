@@ -25,10 +25,24 @@ import android.text.format.DateUtils
 import java.util.*
 
 //TODO: Android requires the search to be stopped before connecting to any device. That requirement should be handled transparently by this library!
-class NuimoDiscoveryManager(context: Context) {
+class NuimoDiscoveryManager private constructor(context: Context) {
     companion object {
         const val PERMISSIONS_REQUEST_CODE = 235
         const val LOST_CONTROLLER_TIMEOUT = 7 * DateUtils.SECOND_IN_MILLIS
+        private var _instance: NuimoDiscoveryManager? = null
+        @JvmStatic
+        var instance: NuimoDiscoveryManager? = null
+            get() {
+                if (_instance == null) throw IllegalStateException("Discovery manager hasn't been initialized, call NuimoDiscoveryManager.init(Context) first")
+                return _instance
+            }
+            private set
+
+        @JvmStatic
+        fun init(context: Context): NuimoDiscoveryManager {
+            _instance = NuimoDiscoveryManager(context)
+            return _instance as NuimoDiscoveryManager
+        }
     }
 
     private val context: Context = if (context is Activity) { context.applicationContext } else { context }
