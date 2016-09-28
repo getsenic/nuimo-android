@@ -60,6 +60,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
         val gattToClose = gatt
         mainHandler.post {
             gattToClose?.disconnect()
+            NuimoDiscoveryManager.instance?.onFinishConnecting(this)
         }
 
         reset()
@@ -94,6 +95,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
     }
 
     private fun createConnection(): BluetoothGatt {
+        NuimoDiscoveryManager.instance?.onStartConnecting(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             // On Nougat some devices can try to connect using BR/EDR instead of LE, so we set the transport explicitly to LE
             // https://code.google.com/p/android/issues/detail?id=223104
@@ -159,7 +161,10 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
                     }
                 }
                 status != BluetoothGatt.GATT_SUCCESS -> disconnect() //TODO: Pass error code to disconnect (status) that is forwarded to listeners
-                newState == BluetoothProfile.STATE_CONNECTED -> discoverServices()
+                newState == BluetoothProfile.STATE_CONNECTED -> {
+                    NuimoDiscoveryManager.instance?.onFinishConnecting(this@NuimoBluetoothController)
+                    discoverServices()
+                }
             }
         }
 
