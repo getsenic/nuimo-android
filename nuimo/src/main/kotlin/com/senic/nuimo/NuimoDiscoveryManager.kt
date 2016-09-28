@@ -50,11 +50,14 @@ class NuimoDiscoveryManager private constructor(context: Context) {
     private val scanCallbackApi18: ScanCallbackApi18 by lazy { ScanCallbackApi18() }
     private val scanCallbackApi21: ScanCallbackApi21 by lazy { ScanCallbackApi21() }
     private val discoveryListeners = ArrayList<NuimoDiscoveryListener>()
+    private val connectingNuimosAddresses = ArrayList<String>()
     private var shouldStartDiscoveryWhenPermissionsGranted = false
     private var scanPowerModeWhenPermissionsGranted = ScanSettings.SCAN_MODE_LOW_POWER
     private val discoveredControllers = ArrayList<DiscoveredNuimoController>()
     private val nuimoDeviceNames = listOfNotNull("Nuimo", System.getProperty("other_nuimo_device_name", null))
     private var checkLostControllersTimer: Timer? = null
+    private var scanPowerMode = ScanSettings.SCAN_MODE_LOW_POWER
+    private var discoveryRunning = false
 
     fun addDiscoveryListener(discoveryListener: NuimoDiscoveryListener) {
         discoveryListeners.add(discoveryListener)
@@ -90,7 +93,21 @@ class NuimoDiscoveryManager private constructor(context: Context) {
         }
 
         discoveredControllers.clear()
+        this.scanPowerMode = scanPowerMode
+        discoveryRunning = true
+        if (connectingNuimosAddresses.size > 0) return true
 
+        return resumeDiscovery()
+    }
+
+    fun stopDiscovery() {
+        discoveryRunning = false
+        pauseDiscovery()
+
+        shouldStartDiscoveryWhenPermissionsGranted = false
+    }
+
+    private fun resumeDiscovery(): Boolean {
         // Detect if any Nuimo is already paired
         bluetoothAdapter?.bondedDevices?.forEach { onDeviceFound(it) }
 
@@ -99,19 +116,50 @@ class NuimoDiscoveryManager private constructor(context: Context) {
         checkLostControllersTimer?.cancel()
         checkLostControllersTimer = Timer()
         checkLostControllersTimer?.schedule(CheckLostControllersTask(discoveredControllers, discoveryListeners), DateUtils.SECOND_IN_MILLIS, DateUtils.SECOND_IN_MILLIS)
+        discoveredControllers.forEach { it.updateDiscoveryTimestamp() }
         //TODO: We should pass a service UUID filter to only search devices with Nuimo's service UUIDs but then no devices are found on Samsung S3.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             if ((android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) && !checkLocationServiceEnabled()) { return false }
             startDiscoveryLollipop(scanPowerMode)
         }
         else {
-            startDiscoveryLegacy()
+            startDiscoveryPreLollipop()
         }
 
         return true
     }
 
-    private fun startDiscoveryLegacy() {
+    private fun pauseDiscovery() {
+        if (bluetoothAdapter?.state != BluetoothAdapter.STATE_ON) return
+
+        checkLostControllersTimer?.cancel()
+        checkLostControllersTimer = null
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            // Catches exception caused by a bug in Android: https://code.google.com/p/android/issues/detail?id=160503
+            withCatchNullPointerException { stopDiscoveryLollipop() }
+        }
+        else {
+            // Catches exception caused by a bug in Android: https://code.google.com/p/android/issues/detail?id=160503
+            withCatchNullPointerException { stopDiscoveryPreLollipop() }
+        }
+    }
+
+    internal fun onStartConnecting(controller: NuimoController) {
+        if (connectingNuimosAddresses.contains(controller.address)) return
+        connectingNuimosAddresses.add(controller.address)
+
+        pauseDiscovery()
+    }
+
+    internal fun onFinishConnecting(controller: NuimoController) {
+        connectingNuimosAddresses.remove(controller.address)
+
+        if (connectingNuimosAddresses.size == 0 && discoveryRunning) {
+            resumeDiscovery()
+        }
+    }
+
+    private fun startDiscoveryPreLollipop() {
         @Suppress("DEPRECATION")
         bluetoothAdapter?.startLeScan(/*NUIMO_SERVICE_UUIDS,*/ scanCallbackApi18)
     }
@@ -124,24 +172,7 @@ class NuimoDiscoveryManager private constructor(context: Context) {
         bluetoothAdapter?.bluetoothLeScanner?.startScan(filters, scanSettings, scanCallbackApi21)
     }
 
-    fun stopDiscovery() {
-        shouldStartDiscoveryWhenPermissionsGranted = false
-        checkLostControllersTimer?.cancel()
-        checkLostControllersTimer = null
-
-        if (bluetoothAdapter?.state != BluetoothAdapter.STATE_ON) return
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            // Catches exception caused by a bug in Android: https://code.google.com/p/android/issues/detail?id=160503
-            withCatchNullPointerException { stopDiscoveryLollipop() }
-        }
-        else {
-            // Catches exception caused by a bug in Android: https://code.google.com/p/android/issues/detail?id=160503
-            withCatchNullPointerException { stopDiscoveryLegacy() }
-        }
-    }
-
-    private fun stopDiscoveryLegacy() {
+    private fun stopDiscoveryPreLollipop() {
         bluetoothAdapter?.stopLeScan(scanCallbackApi18)
     }
 
