@@ -44,7 +44,9 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
             // If there is still a reference to gatt we should close it
             gatt?.close()
             reset()
-            gatt = createConnection()
+            try {
+                gatt = createConnection()
+            } catch (e: IllegalStateException) { notifyListeners { it.onFailToConnect(REASON_GATT_ERROR) }}
             // TODO: if there are problems and the following result is false we should call gatt.disconnect() and try the connection again. See http://stackoverflow.com/a/34544263/91226
             refreshGatt()
         }
@@ -152,7 +154,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
                     disconnect()
 
                     if (previousConnectionState == NuimoConnectionState.CONNECTING) {
-                        notifyListeners { it.onFailToConnect() }
+                        notifyListeners { it.onFailToConnect(REASON_CONNECTION_NOT_ESTABLISHED) }
                     }
                     else if (previousConnectionState == NuimoConnectionState.DISCONNECTING ||
                             previousConnectionState == NuimoConnectionState.CONNECTED) {

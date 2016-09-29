@@ -17,6 +17,13 @@ abstract class NuimoController(address: String) {
         val OPTION_WITH_ONION_SKINNING_FADE_IN = 1 shl 1
         @JvmField
         val OPTION_WITHOUT_WRITE_RESPONSE      = 1 shl 2
+        /**
+         * BluetoothDevice.connectGatt() returns null
+         */
+        @JvmField
+        val REASON_GATT_ERROR                  = 1
+        @JvmField
+        val REASON_CONNECTION_NOT_ESTABLISHED  = 2
     }
 
     val address: String = address
@@ -73,7 +80,11 @@ abstract class NuimoController(address: String) {
 
 interface NuimoControllerListener {
     fun onConnect() {}
-    fun onFailToConnect() {}
+    /**
+     * @see {@link NuimoController.REASON_GATT_ERROR}
+     * @see {@link NuimoController.REASON_CONNECTION_NOT_ESTABLISHED}
+     */
+    fun onFailToConnect(reason: Int) {}
     fun onDisconnect() {}
     fun onLedMatrixWrite() {}
     fun onGestureEvent(event: NuimoGestureEvent) {}
