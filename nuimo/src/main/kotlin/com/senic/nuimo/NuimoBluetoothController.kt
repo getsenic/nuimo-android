@@ -45,6 +45,11 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
             gatt?.close()
             reset()
             gatt = createConnection()
+            if (gatt == null) {
+                connectionState = NuimoConnectionState.DISCONNECTED
+                notifyListeners { it.onFailToConnect() }
+                return@post
+            }
             // TODO: if there are problems and the following result is false we should call gatt.disconnect() and try the connection again. See http://stackoverflow.com/a/34544263/91226
             refreshGatt()
         }
@@ -94,7 +99,7 @@ class NuimoBluetoothController(bluetoothDevice: BluetoothDevice, private val con
         return false
     }
 
-    private fun createConnection(): BluetoothGatt {
+    private fun createConnection(): BluetoothGatt? {
         NuimoDiscoveryManager.instance?.onStartConnecting(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             // On Nougat some devices can try to connect using BR/EDR instead of LE, so we set the transport explicitly to LE
