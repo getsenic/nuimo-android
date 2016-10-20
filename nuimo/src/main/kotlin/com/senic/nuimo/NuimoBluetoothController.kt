@@ -445,17 +445,17 @@ private val CHARACTERISTIC_NOTIFICATION_UUIDS = arrayOf(
 
 //TODO: Should be only visible in this module but then it's not seen by the test
 fun NuimoLedMatrix.gattBytes(): ByteArray {
-    return bits
+    return leds
             .chunk(8)
             .map { it
                     .mapIndexed { i, b -> if (b) { 1 shl i } else { 0 } }
                     .reduce { n, i -> n + i }
             }
-            .map { it.toByte() }
+            .map(Int::toByte)
             .toByteArray()
 }
 
-private fun List<Boolean>.chunk(n: Int): List<List<Boolean>> {
+private fun Array<Boolean>.chunk(n: Int): List<List<Boolean>> {
     val chunks = java.util.ArrayList<List<Boolean>>(size / n + 1)
     val chunk = ArrayList<Boolean>(n)
     var i = n

@@ -13,28 +13,30 @@ open class NuimoLedMatrix {
         val LedOffCharacters = " 0".toCharArray()
     }
 
-    val bits: List<Boolean>
+    val leds: Array<Boolean>
 
     constructor(string: String) {
-        bits = string
+        leds = string
             .substring(0..Math.min(LED_COUNT, string.length)-1)
             .padEnd(LED_COUNT, ' ')
             .toCharArray()
             .map { !LedOffCharacters.contains(it) }
+            .toTypedArray()
     }
 
-    constructor(bits: Array<Boolean>) {
-        this.bits = bits
-            .slice(0..Math.min(LED_COUNT, bits.size) - 1)
-            .plus(if (bits.size < LED_COUNT) Array(LED_COUNT - bits.size, { false }) else arrayOf())
+    constructor(leds: Array<Boolean>) {
+        this.leds = leds
+            .slice(0..Math.min(LED_COUNT, leds.size) - 1)
+            .plus(if (leds.size < LED_COUNT) Array(LED_COUNT - leds.size, { false }) else arrayOf())
+            .toTypedArray()
     }
 
     override fun equals(other: Any?): Boolean {
         if (other is NuimoLedMatrix) {
-            return bits.equals(other.bits)
+            return leds.equals(other.leds)
         }
         return super.equals(other)
     }
 
-    override fun hashCode(): Int = bits.hashCode()
+    override fun hashCode(): Int = leds.hashCode()
 }

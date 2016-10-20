@@ -22,7 +22,7 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false).toList(),
-            NuimoLedMatrix(zeroMatrixString).bits)
+            NuimoLedMatrix(zeroMatrixString).leds)
     }
 
     fun testOneMatrixShouldConvertToItsBitRepresentation() {
@@ -36,7 +36,7 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true).toList(),
-            NuimoLedMatrix(oneMatrixString).bits)
+            NuimoLedMatrix(oneMatrixString).leds)
     }
 
     fun testTooShortMatrixShouldConvertToItsBitRepresentation() {
@@ -50,7 +50,7 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false,
                 false, false, false, false, false, false, false, false, false).toList(),
-            NuimoLedMatrix("111111111" + "000000000").bits)
+            NuimoLedMatrix("111111111" + "000000000").leds)
     }
 
     fun testTooLongMatrixShouldConvertToItsBitRepresentation() {
@@ -64,7 +64,7 @@ open class NuimoLedMatrixTest: AndroidTestCase() {
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true,
                 true, true, true, true, true, true, true, true, true).toList(),
-            NuimoLedMatrix(oneMatrixString + "000000000").bits)
+            NuimoLedMatrix(oneMatrixString + "000000000").leds)
     }
 
     fun testNuimoLedMatrixShouldConvertToItsGattByteRepresentation() {
