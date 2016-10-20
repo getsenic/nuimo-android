@@ -332,7 +332,10 @@ private class LedMatrixWriter(private val gatt: BluetoothGatt, private val matri
 
     private fun writeNow(withResponse: Boolean) {
         val gattBytes = (currentMatrix ?: NuimoLedMatrix("")).gattBytes() + byteArrayOf(255.toByte(), Math.min(Math.max(currentMatrixDisplayIntervalSecs * 10.0, 0.0), 255.0).toByte())
-        gattBytes[10] = (gattBytes[10].toInt() or (if (currentMatrixWithOnionSkinningFadeIn) { 1 shl 4 } else { 0 })).toByte()
+        gattBytes[10] = (gattBytes[10].toInt() or
+                (if (currentMatrixWithOnionSkinningFadeIn)   { 1 shl 4 } else { 0 }) or
+                (if (currentMatrix is NuimoBuiltInLedMatrix) { 1 shl 5 } else { 0 })
+        ).toByte()
 
         val writeCommand: () -> Unit = {
             matrixCharacteristic.writeType = when (withResponse) {
