@@ -16,7 +16,7 @@ import kotlin.concurrent.schedule
 open class NuimoDiscoveryManagerTest: AndroidTestCase() {
     override fun setUp() {
         super.setUp()
-        val discovery: NuimoDiscoveryManager = NuimoDiscoveryManager(context)
+        val discovery = NuimoDiscoveryManager.init(context)
         assertTrue("Bluetooth must be present and enabled", discovery.checkBluetoothEnabled())
         assertTrue("Permissions must be granted", discovery.checkPermissions(null))
     }
@@ -103,7 +103,7 @@ open class NuimoDiscoveryManagerTest: AndroidTestCase() {
             timedOut = true
             waitLock.release()
         }
-        val discovery: NuimoDiscoveryManager = NuimoDiscoveryManager(context)
+        val discovery = NuimoDiscoveryManager.init(context)
         discovery.addDiscoveryListener(object: NuimoDiscoveryListener {
             override fun onDiscoverNuimoController(nuimoController: NuimoController) {
                 println("Bluetooth device found " + nuimoController.address)
