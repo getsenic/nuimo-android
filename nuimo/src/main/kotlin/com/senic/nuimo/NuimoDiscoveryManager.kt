@@ -87,9 +87,9 @@ class NuimoDiscoveryManager private constructor(context: Context) {
         scanPowerModeWhenPermissionsGranted = scanPowerMode
 
         when {
-            !checkPermissions(context as? Activity)     -> return false
-            scanPowerMode < 0 || scanPowerMode > 2      -> throw IllegalArgumentException("scanPowerMode should be one of of ScanSettings.SCAN_MODE_LOW_POWER, ScanSettings.SCAN_MODE_BALANCED or ScanSettings.SCAN_MODE_LOW_LATENCY")
-            !checkBluetoothEnabled()                    -> return false
+            !checkPermissions()                    -> return false
+            scanPowerMode < 0 || scanPowerMode > 2 -> throw IllegalArgumentException("scanPowerMode should be one of of ScanSettings.SCAN_MODE_LOW_POWER, ScanSettings.SCAN_MODE_BALANCED or ScanSettings.SCAN_MODE_LOW_LATENCY")
+            !checkBluetoothEnabled()               -> return false
         }
 
         discoveredControllers.clear()
@@ -200,7 +200,7 @@ class NuimoDiscoveryManager private constructor(context: Context) {
      *         running on Android <= 5.1 or targets an Android SDK version <= 22.
      *         Returns false if the user has not yet granted the necessary permissions.
      */
-    fun checkPermissions(activity: Activity?): Boolean {
+    fun checkPermissions(activity: Activity? = null): Boolean {
         // Currently ACCESS_COARSE_LOCATION is only needed for API level >= 23 (https://code.google.com/p/android/issues/detail?id=196485)
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) { return true }
         // Check ACCESS_COARSE_LOCATION permission and request if not yet granted
